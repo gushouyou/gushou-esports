@@ -17,14 +17,14 @@
       <span>顾手游电竞<small>ADMIN CONSOLE</small></span>
     </a>
     <h2>管理后台登录</h2>
-    <p class="login-tip">请输入管理员账号与密码以进入控制台</p>
+    <p class="login-tip">请输入管理员账号与密码，登录校验由云端 Worker API 完成（仅 admin 角色可进入控制台）</p>
 
     <div class="alert alert-error" id="loginError"></div>
 
     <form id="loginForm" novalidate>
       <div class="field" style="margin-bottom:14px">
         <label for="lg-user">管理员账号</label>
-        <input type="text" id="lg-user" placeholder="请输入账号" autocomplete="username">
+        <input type="text" id="lg-user" value="guadmin" placeholder="请输入账号" autocomplete="username">
       </div>
       <div class="field" style="margin-bottom:18px">
         <label for="lg-pass">登录密码</label>
@@ -80,6 +80,8 @@
           <div class="toolbar">
             <button class="btn btn-ghost btn-sm" type="button" id="ctExport">导出内容 JSON</button>
             <button class="btn btn-ghost btn-sm" type="button" id="ctReset">恢复默认内容</button>
+            <button class="btn btn-ghost btn-sm" type="button" id="ctPullCloud">从云端拉取内容</button>
+            <button class="btn btn-ghost btn-sm" type="button" id="ctPushCloud">同步内容到云端</button>
             <button class="btn btn-primary btn-sm" type="button" id="ctSave">保存并生效</button>
           </div>
         </div>
@@ -258,7 +260,7 @@
         <div class="admin-page-head">
           <div>
             <h2>订单管理</h2>
-            <p>查看、筛选、修改官网上提交的需求订单（含本机 localStorage 中的真实表单提交记录）。</p>
+            <p>查看、筛选、修改前台用户通过云端 API 提交的订单；订单数据来自 Cloudflare Worker API（GET /api/orders/admin），状态变更直接写回云端。</p>
           </div>
           <div class="toolbar">
             <input type="text" id="orderSearch" placeholder="搜索单号 / 客户 / 联系方式">
@@ -270,7 +272,6 @@
               <option value="已取消">已取消</option>
             </select>
             <button class="btn btn-ghost btn-sm" type="button" id="exportBtn">导出 JSON</button>
-            <button class="btn btn-primary btn-sm" type="button" id="newOrderBtn">新建订单</button>
           </div>
         </div>
 
@@ -283,7 +284,7 @@
             <table>
               <thead>
                 <tr>
-                  <th>单号</th><th>客户</th><th>游戏 / 服务</th><th>段位目标</th>
+                  <th>单号</th><th>客户</th><th>服务内容</th>
                   <th>金额</th><th>提交时间</th><th>状态</th><th>操作</th>
                 </tr>
               </thead>
@@ -324,7 +325,7 @@
         <div class="admin-page-head">
           <div>
             <h2>客户留言</h2>
-            <p>来自官网「联系下单」页面的需求详情与补充说明。</p>
+            <p>来自官网留言板（GET /api/messages），登录用户发表的留言会实时同步到这里。</p>
           </div>
         </div>
         <div id="messageList"></div>
@@ -428,6 +429,7 @@
 
 <div class="toast-wrap"></div>
 <script src="assets/js/site-data.js"></script>
+<script src="assets/js/api-client.js"></script>
 <script src="assets/js/admin-auth-config.js"></script>
 <script src="assets/js/admin.js"></script>
 <script src="assets/js/admin-content.js"></script>
