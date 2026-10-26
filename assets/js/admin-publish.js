@@ -23,7 +23,7 @@
     repo: "gushou-esports",
     branch: "main",
     path: "assets/data/site-data.json",
-    site: "https://gushouyou.github.io/gushou-esports/",
+    site: "https://gushouyou.top/",
     api: "https://api.github.com"
   };
   var SLUG = CFG.owner + "/" + CFG.repo;
