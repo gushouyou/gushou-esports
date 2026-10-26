@@ -19,11 +19,11 @@
 
   /* ---------------- 发布目标（换仓库 / 换站点时只改这里） ---------------- */
   var CFG = {
-    owner: "Gu060125",
+    owner: "gushouyou",
     repo: "gushou-esports",
     branch: "main",
     path: "assets/data/site-data.json",
-    site: "https://gu060125.github.io/gushou-esports/",
+    site: "https://gushouyou.github.io/gushou-esports/",
     api: "https://api.github.com"
   };
   var SLUG = CFG.owner + "/" + CFG.repo;
