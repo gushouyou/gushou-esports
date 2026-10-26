@@ -1,7 +1,7 @@
 /* =========================================================
    顾手游电竞 - 在线聊天逻辑（对接 Cloudflare Worker API）
    ---------------------------------------------------------
-   依赖：api-client.js（window.GBApi）、user-auth.js（GBUser）
+   依赖：api-client.js（window.GB_API）、user-auth.js（GBUser）
    每 5 秒用 ?after= 增量轮询最新消息。
    ========================================================= */
 (function () {
@@ -56,9 +56,9 @@
     var status = $("#gbChatStatus");
     if (status) status.textContent = "连接中…";
 
-    GBApi.listChat()
+    window.GB_API.listChat()
       .then(function (arr) {
-        arr = Array.isArray(arr) ? arr : [];
+        arr = Array.isArray(arr) ? arr : (arr && Array.isArray(arr.list) ? arr.list : []);
         historyLoaded = true;
         if (status) status.textContent = "在线 · 每 5 秒自动刷新";
         box.innerHTML = arr.length
@@ -77,9 +77,9 @@
   }
 
   function poll() {
-    GBApi.listChatAfter(lastId)
+    window.GB_API.listChat(lastId)
       .then(function (arr) {
-        arr = Array.isArray(arr) ? arr : [];
+        arr = Array.isArray(arr) ? arr : (arr && Array.isArray(arr.list) ? arr.list : []);
         if (!arr.length) return;
         markLast(arr);
         var wasBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
@@ -110,16 +110,10 @@
       return;
     }
 
-    GBApi.postChat(content)
-      .then(function (m) {
+    window.GB_API.postChat(content)
+      .then(function () {
         if (input) input.value = "";
-        var hadEmpty = box.querySelector(".gb-empty");
-        if (hadEmpty) hadEmpty.remove();
-        var arr = [m];
-        markLast(arr);
-        renderMsgs(arr, false);
-        box.scrollTop = box.scrollHeight;
-        /* 发送成功后立即轮询一次，把他人消息一并带回 */
+        /* 发送成功后立即轮询一次，把最新消息（含刚发送的内容）拉回来 */
         setTimeout(poll, 300);
       })
       .catch(function (err) {

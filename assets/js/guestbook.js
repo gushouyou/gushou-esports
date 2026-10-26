@@ -1,7 +1,7 @@
 /* =========================================================
    顾手游电竞 - 留言板逻辑（对接 Cloudflare Worker API）
    ---------------------------------------------------------
-   依赖：api-client.js（window.GBApi）、user-auth.js（GBUser）
+   依赖：api-client.js（window.GB_API）、user-auth.js（GBUser）
    ========================================================= */
 (function () {
   "use strict";
@@ -28,9 +28,9 @@
     if (!list) return;
     list.innerHTML = '<div class="gb-empty">正在加载留言…</div>';
 
-    GBApi.listMessages()
+    window.GB_API.listMessages()
       .then(function (arr) {
-        arr = Array.isArray(arr) ? arr : [];
+        arr = Array.isArray(arr) ? arr : (arr && Array.isArray(arr.list) ? arr.list : []);
         var count = $("#gbMsgCount");
         if (count) count.textContent = "共 " + arr.length + " 条";
 
@@ -39,7 +39,7 @@
           return;
         }
 
-        var me = GBApi.getUser();
+        var me = window.GB_API.getUser();
         var myName = me && me.name;
         list.innerHTML = arr.slice().reverse().map(function (m) {
           var own = myName && m.username === myName;
@@ -76,7 +76,7 @@
       return;
     }
 
-    GBApi.postMessage(content)
+    window.GB_API.postMessage(content)
       .then(function (m) {
         if (textEl) textEl.value = "";
         if (okBox) { okBox.textContent = "留言发表成功！"; okBox.style.display = "block"; }
@@ -97,7 +97,7 @@
   }
 
   function del(id) {
-    GBApi.deleteMessage(id)
+    window.GB_API.deleteMessage(id)
       .then(function () { loadList(); })
       .catch(function (err) {
         var errBox = $("#gbPostErr");

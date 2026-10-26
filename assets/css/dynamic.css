@@ -222,3 +222,37 @@
   .gb-modal { max-width: 100%; }
   .gb-chat-wrap { height: 72vh; }
 }
+
+/* ---------------- 输入框配色统一（防止文字与背景冲突） ---------------- */
+.gb-modal input,
+.gb-modal select,
+.gb-modal textarea,
+.gb-chat-input input,
+.gb-chat-input textarea,
+textarea#gbMsgText {
+  background: #0b1122;
+  color: #e9eefb;
+  border: 1px solid var(--line-strong, #2a3450);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  caret-color: #4f8cff;
+}
+.gb-modal input::placeholder,
+.gb-modal select::placeholder,
+.gb-modal textarea::placeholder,
+.gb-chat-input input::placeholder,
+.gb-chat-input textarea::placeholder,
+textarea#gbMsgText::placeholder {
+  color: #7d8ab0;
+}
+.gb-modal input:focus,
+.gb-modal select:focus,
+.gb-modal textarea:focus,
+.gb-chat-input input:focus,
+.gb-chat-input textarea:focus,
+textarea#gbMsgText:focus {
+  outline: none;
+  border-color: #4f8cff;
+  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.18);
+}

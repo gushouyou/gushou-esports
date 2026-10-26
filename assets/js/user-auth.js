@@ -158,7 +158,7 @@
     var list = document.getElementById("gbOdList");
     var errBox = document.getElementById("gbOdErr");
     A.myOrders().then(function (data) {
-      var rows = data.rows || data.orders || (Array.isArray(data) ? data : []);
+      var rows = data.rows || data.list || data.orders || (Array.isArray(data) ? data : []);
       if (!rows.length) {
         list.innerHTML = '<div class="gb-empty">暂无订单，去「联系下单」页提交一单吧。</div>';
         return;
