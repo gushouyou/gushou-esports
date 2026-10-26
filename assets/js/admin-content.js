@@ -653,6 +653,94 @@
     toast("已导出当前站点内容 JSON", "ok");
   }
 
+  /* ---------------- 云端内容同步（Cloudflare Worker /api/content） ---------------- */
+  function collectSchemaKeys() {
+    var keys = [];
+    SCHEMA.forEach(function (g) {
+      (g.fields || []).forEach(function (o) { if (keys.indexOf(o.k) < 0) keys.push(o.k); });
+      (g.lists || []).forEach(function (L) { if (keys.indexOf(L.path) < 0) keys.push(L.path); });
+    });
+    return keys;
+  }
+
+  /* 后台登录时由 admin.js 注入 token；此处兜底再注入一次，保证独立刷新也可用 */
+  function cloudTokenInject() {
+    if (window.GB_API) {
+      window.GB_API.setTokenGetter(function () {
+        return sessionStorage.getItem("gb_admin_token") || "";
+      });
+    }
+  }
+
+  /* 云端存的是字符串；优先尝试还原为 JSON 对象 / 数组，失败则视为普通字符串 */
+  function parseCloudValue(raw) {
+    if (typeof raw !== "string") return raw;
+    try { return JSON.parse(raw); }
+    catch (e) { return raw; }
+  }
+
+  function doPushCloud() {
+    if (!window.GB_API) { toast("云端 API 客户端未加载，请刷新页面后重试", "err"); return; }
+    cloudTokenInject();
+    var data = draft || S.get();
+    var keys = collectSchemaKeys();
+    var ok = 0, fail = 0, failedKeys = [];
+    var btn = document.getElementById("ctPushCloud");
+    var original = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "正在同步…"; }
+
+    var i = 0;
+    function next() {
+      if (i >= keys.length) {
+        if (btn) { btn.disabled = false; btn.textContent = original; }
+        if (fail === 0) toast("已同步 " + ok + " 个内容字段到云端", "ok");
+        else toast("同步完成：成功 " + ok + " 项，失败 " + fail + " 项（" + failedKeys.join("、") + "）", "err");
+        return;
+      }
+      var key = keys[i++];
+      var val = S.getPath(data, key);
+      if (val === undefined || val === null) { next(); return; }
+      var payload = (typeof val === "string") ? val : JSON.stringify(val);
+      window.GB_API.saveContent(key, payload).then(function () {
+        ok++;
+        next();
+      }).catch(function (err) {
+        fail++;
+        failedKeys.push(key);
+        next();
+      });
+    }
+    next();
+  }
+
+  function doPullCloud() {
+    if (!window.GB_API) { toast("云端 API 客户端未加载，请刷新页面后重试", "err"); return; }
+    cloudTokenInject();
+    var btn = document.getElementById("ctPullCloud");
+    var original = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "正在拉取…"; }
+    window.GB_API.getContent().then(function (res) {
+      var content = (res && res.content) || {};
+      var keys = Object.keys(content);
+      if (!keys.length) { toast("云端暂无可同步的内容", ""); return; }
+      var applied = 0;
+      keys.forEach(function (key) {
+        var it = content[key];
+        var val = parseCloudValue(it && it.value);
+        S.setPath(draft, key, val);
+        applied++;
+      });
+      markDirty();
+      render();
+      updateStatus();
+      toast("已从云端拉取 " + applied + " 个字段并合并到当前草稿（未保存，请检查后点「保存并生效」）", "ok");
+    }).catch(function (err) {
+      toast("拉取云端内容失败：" + (err.message || "后端连接失败"), "err");
+    }).then(function () {
+      if (btn) { btn.disabled = false; btn.textContent = original; }
+    });
+  }
+
   /* ---------------- 旧版数据同步（gb_services / gb_settings） ---------------- */
   var ALIAS = { "活动代肝": "代肝" };
 
@@ -820,6 +908,11 @@
     if (reset) reset.addEventListener("click", doReset);
     var exp = document.getElementById("ctExport");
     if (exp) exp.addEventListener("click", doExport);
+
+    var pushCloud = document.getElementById("ctPushCloud");
+    if (pushCloud) pushCloud.addEventListener("click", doPushCloud);
+    var pullCloud = document.getElementById("ctPullCloud");
+    if (pullCloud) pullCloud.addEventListener("click", doPullCloud);
 
     document.addEventListener("keydown", function (e) {
       if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
