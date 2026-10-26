@@ -71,7 +71,7 @@ output/
 2. 顶部导航可在四个页面之间跳转。
 3. 进入 **管理后台** 需登录：管理员账号与密码**由你自己设置**，位置是 `assets/js/admin-auth-config.js`（详见第八节「管理后台管理员账号配置」）。**首次使用前必须先填写该文件**，否则后台无法登录，页面会提示「管理员账号尚未配置」。
 4. 想改站内文案、价格、联系方式，登录后台后进入 **内容管理** 页面修改（详见下一节）。
-5. 改完想让**公网访客**也看到，需要把内容**发布到线上**（详见第四节）：在后台 **🚀 发布到线上** 填一次 GitHub Token，之后每次改完点「立即发布到线上」即可，约 1 分钟后全站生效。线上网址：`https://gu060125.github.io/gushou-esports/`。
+5. 改完想让**公网访客**也看到，需要把内容**发布到线上**（详见第四节）：在后台 **🚀 发布到线上** 填一次 GitHub Token，之后每次改完点「立即发布到线上」即可，约 1 分钟后全站生效。线上网址：`https://gushouyou.top/`。
 
 ## 品牌名称与 Logo（全站统一）
 
@@ -158,10 +158,10 @@ output/
 
 | 项目 | 值 |
 | --- | --- |
-| 仓库 | `Gu060125/gushou-esports` |
+| 仓库 | `gushouyou/gushou-esports` |
 | 分支 | `main`（以后台实际读取到的仓库默认分支为准） |
 | 数据文件 | `assets/data/site-data.json`（首次发布时自动创建） |
-| 公网网址 | `https://gu060125.github.io/gushou-esports/` |
+| 公网网址 | `https://gushouyou.top/` |
 
 进入仓库 **Settings → Pages**，Source 选 `Deploy from a branch`，Branch 选 `main`、目录选 `/ (root)` 后保存；等待 1~2 分钟即可用上面的网址访问。若仓库里还没有 `assets/data/site-data.json`，访客会先看到内置默认内容，首次发布后即变为你发布的内容。
 
@@ -174,7 +174,7 @@ output/
 5. 填写基本信息：
    - **Token name**：`gushou-site-publish`（随意取名，便于以后识别）
    - **Expiration**：建议 90 天（到期后重新生成一个替换即可；也可选更长有效期）
-   - **Resource owner**：选择你自己的账号 `Gu060125`
+   - **Resource owner**：选择你自己的账号 `gushouyou`
 6. **Repository access** 选 **Only select repositories**，在下拉框中**只勾选** `gushou-esports`（不要选 All repositories）；
 7. 展开 **Repository permissions**，只修改一项：**Contents** → 选择 **Read and write**（其余项保持默认的 No access，最小授权）；
 8. 页面底部点 **Generate token**，顶部会显示一串以 `github_pat_` 开头的字符 —— **它只显示这一次**，请立即复制；
@@ -200,7 +200,7 @@ output/
 - 每次发布会生成一条提交记录，提交信息为「更新站点内容（后台发布 YYYY-MM-DD HH:MM:SS）」，可在页面底部点「查看提交记录」追溯。
 - 发布记录（时间 + commit 号）存在本机浏览器（键名 `gb_publish_meta`），仅用于在后台显示「上次发布」信息。
 - 发布提交的是**整份内容数据**，**后台上传的客服二维码图片（base64）也包含在内**，因此二维码无需单独上传到仓库即可让访客看到。图片越大数据文件越大（发布弹窗会显示「内容大小」），建议把二维码压缩到 300 KB 以内再上传。
-- 建议直接在**线上后台** `https://gu060125.github.io/gushou-esports/admin.html` 操作发布：Token 与内容数据都按浏览器站点归属保存，本机用 `file://` 打开的后台与线上后台的数据互不相通，两边需要分别粘贴一次 Token。
+- 建议直接在**线上后台** `https://gushouyou.top/admin.html` 操作发布：Token 与内容数据都按浏览器站点归属保存，本机用 `file://` 打开的后台与线上后台的数据互不相通，两边需要分别粘贴一次 Token。
 
 ### 3. 为什么发布后所有人就都能看到
 
