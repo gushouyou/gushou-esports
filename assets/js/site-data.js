@@ -1,8 +1,9 @@
 /* =========================================================
    顾手游电竞 · 站点数据层 + 前台渲染引擎
    -------------------------------------------------
-   数据来源优先级：localStorage(gb_site_v1) > 内置默认数据(DEFAULTS)
-   后台「内容管理」修改后写入 localStorage，前台刷新即生效。
+   数据来源优先级：localStorage(gb_site_v1) > 云端 /api/content > 线上已发布数据 > 内置默认数据(DEFAULTS)
+   后台「内容管理」修改后写入 localStorage，前台刷新即生效；
+   后台「同步内容到云端」后，所有访客打开页面会自动读取云端内容并合并渲染。
    品牌名统一由 DEFAULTS.brand 提供，旧数据中的旧品牌会自动迁移。
    ========================================================= */
 (function () {
@@ -383,6 +384,15 @@
   var remote = null;         /* 线上数据缓存（读取成功后生效） */
   var remoteState = "idle";  /* idle | loading | loaded | missing | error */
 
+  /* ---------------- 云端内容（Cloudflare Worker API） ----------------
+     数据优先级：localStorage(gb_site_v1) > 云端 /api/content > 线上已发布数据 > 内置默认数据
+     · 后台「内容管理」的「同步内容到云端」会把 gb_site_v1 中所有 key（点路径）逐条写入 Worker 的 D1 库；
+     · 前台初始化时异步 GET /api/content，把返回的 key 按点路径 setPath 合并进数据后重新渲染；
+     · 云端加载失败时静默回落，不影响原逻辑（线上 JSON / 默认数据）。 */
+  var CLOUD_API = "https://api.gushouyou.top/api/content";
+  var cloud = null;          /* 云端内容缓存（读取成功后生效） */
+  var cloudState = "idle";   /* idle | loading | loaded | missing | error */
+
   /* ---------------- 读写 ---------------- */
   function readRaw() {
     try {
@@ -392,10 +402,12 @@
     } catch (e) { return null; }
   }
 
-  /* 数据骨架 = 内置默认数据 + 线上已发布数据（线上数据存在时覆盖同名字段） */
+  /* 数据骨架 = 内置默认数据 + 线上已发布数据 + 云端内容（云端优先级最高，其次线上） */
   function baseData() {
-    if (!remote) return clone(DEFAULTS);
-    return migrateBrand(merge(DEFAULTS, remote)).data;
+    var out = clone(DEFAULTS);
+    if (remote) out = merge(out, remote);
+    if (cloud) out = merge(out, cloud);
+    return migrateBrand(out).data;
   }
 
   function get() {
@@ -436,6 +448,43 @@
     remote = (data && typeof data === "object" && !Array.isArray(data)) ? clone(data) : null;
     remoteState = remote ? "loaded" : "idle";
   }
+
+  /* ---------------- 云端内容读取 ---------------- */
+  function loadCloudContent() {
+    if (typeof fetch !== "function") { cloudState = "error"; return Promise.resolve(null); }
+    cloudState = "loading";
+    /* 加时间戳参数避开 CDN 缓存；失败一律静默回落，不影响原逻辑 */
+    return fetch(CLOUD_API + "?v=" + Date.now(), { cache: "no-store" })
+      .then(function (res) {
+        if (!res.ok) { cloudState = (res.status === 404 || res.status === 405) ? "missing" : "error"; return null; }
+        return res.json();
+      })
+      .then(function (json) {
+        if (json && typeof json === "object" && json.ok && json.content && typeof json.content === "object") {
+          /* 云端每条记录形如 key -> { value, updated_at }；value 是字符串（后台同步时 JSON.stringify 过），
+             这里尝试还原为 JSON，还原失败则按原字符串保留（避免破坏纯文本内容）。 */
+          var merged = {};
+          Object.keys(json.content).forEach(function (key) {
+            var raw = json.content[key] && json.content[key].value;
+            var val = raw;
+            if (typeof raw === "string") {
+              try { val = JSON.parse(raw); } catch (e) { val = raw; }
+            }
+            setPath(merged, key, val);
+          });
+          cloud = merged;
+          cloudState = "loaded";
+        } else if (cloudState === "loading") {
+          cloudState = "error";
+        }
+        return cloud;
+      })
+      .catch(function () { cloudState = "error"; return null; });
+  }
+
+  function getCloud() { return cloud ? clone(cloud) : null; }
+
+  function cloudStatus() { return cloudState; }
 
   /* 由后台直接标记线上数据状态（missing=仓库里还没有数据文件，error=读取失败） */
   function setRemoteState(state) {
@@ -712,16 +761,24 @@
     setRemote: setRemote,
     setRemoteState: setRemoteState,
     remoteStatus: remoteStatus,
-    baseData: baseData
+    baseData: baseData,
+    CLOUD_API: CLOUD_API,
+    loadCloudContent: loadCloudContent,
+    getCloud: getCloud,
+    cloudStatus: cloudStatus
   };
 
   document.addEventListener("DOMContentLoaded", function () {
-    /* 先用本机数据渲染一次（保证秒开），再异步读取线上已发布数据，读到后重渲染 */
+    /* 先用本机数据渲染一次（保证秒开），再异步读取线上已发布数据与云端内容，读到后重渲染 */
     render();
-    loadRemote().then(function (data) {
-      if (!data) return;
-      render();
-      emitRemoteLoaded();
+    var remoteP = loadRemote();
+    var cloudP = loadCloudContent();
+    Promise.all([remoteP, cloudP]).then(function (results) {
+      if (results[0]) emitRemoteLoaded();
+      if (results[1]) {
+        render();
+        emitRemoteLoaded();
+      }
     });
   });
 })();
