@@ -444,7 +444,7 @@ td strong, td b { color: var(--text); }
 .site-footer { border-top: 1px solid var(--line); padding: 52px 0 26px; margin-top: 40px; position: relative; z-index: 1; }
 /* 页脚品牌保持原尺寸，避免顶部品牌放大后失衡 */
 .site-footer .logo { font-size: 19px; gap: 10px; }
-.site-footer .logo-mark { width: 36px; height: 36px; font-size: 18px; border-radius: 11px; box-shadow: 0 8px 20px -8px rgba(79, 140, 255, 0.9); }
+.site-footer .logo-mark, .site-footer img.logo-mark { width: 36px; height: 36px; font-size: 18px; border-radius: 11px; box-shadow: 0 8px 20px -8px rgba(79, 140, 255, 0.9); object-fit: cover; object-position: center; }
 .site-footer .logo span small { font-size: 10.5px; font-weight: 500; margin-top: 0; }
 .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 34px; margin-bottom: 36px; }
 .footer-grid h4 { font-size: 14px; margin-bottom: 14px; }
@@ -662,7 +662,7 @@ td strong, td b { color: var(--text); }
   #userArea { margin-left: 0; }
   /* 顶部品牌压缩，避免小屏溢出 */
   .logo { gap: 8px; font-size: 20px; }
-  .logo-mark { width: 40px; height: 40px; font-size: 20px; border-radius: 11px; box-shadow: 0 6px 14px -10px rgba(79, 140, 255, 0.9); }
+  .logo-mark, img.logo-mark { width: 40px; height: 40px; font-size: 20px; border-radius: 11px; box-shadow: 0 6px 14px -10px rgba(79, 140, 255, 0.9); }
   /* 触控与字号：移动端关键控件抬升 */
   .tab { min-height: 40px; }
   .faq-q { min-height: 52px; }
