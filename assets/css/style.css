@@ -33,7 +33,7 @@
 /* ---------- 基础重置 ---------- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 
 body {
   font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", Arial, sans-serif;
@@ -639,7 +639,7 @@ td strong, td b { color: var(--text); }
 
 @media (max-width: 820px) {
   .nav-links {
-    position: absolute; top: 68px; left: 0; right: 0;
+    position: absolute; top: var(--nav-h, 68px); left: 0; right: 0;
     flex-direction: column; align-items: stretch; gap: 4px;
     padding: 12px 20px 18px;
     background: rgba(9, 14, 26, 0.98);
@@ -647,8 +647,29 @@ td strong, td b { color: var(--text); }
     display: none;
   }
   .nav-links.open { display: flex; }
-  .nav-links a { border-radius: 10px; }
-  .nav-toggle { display: grid; place-items: center; }
+  .nav-links a { border-radius: 10px; padding: 12px 15px; }
+  .nav-toggle { display: grid; place-items: center; flex: none; }
+  /* 窄屏导航：收起静态按钮，仅保留用户区+菜单，避免挤压溢出与下拉遮挡 */
+  .nav-wrap { gap: 10px; }
+  .nav-actions { gap: 6px; }
+  .nav-actions > a.btn { display: none; }
+  #userArea { margin-left: 0; }
+  /* 顶部品牌压缩，避免小屏溢出 */
+  .logo { gap: 8px; font-size: 20px; }
+  .logo-mark { width: 40px; height: 40px; font-size: 20px; border-radius: 11px; }
+  /* 触控与字号：移动端关键控件抬升 */
+  .tab { min-height: 40px; }
+  .faq-q { min-height: 52px; }
+  .field label { font-size: 14px; }
+  .toolbar input, .toolbar select { font-size: 14px; }
+  /* 后台顶栏窄屏压缩 */
+  .admin-topbar { padding: 0 12px; gap: 10px; }
+  .admin-topbar #nowText { display: none; }
+  .admin-user { gap: 8px; }
+  .admin-user .btn { padding: 7px 10px; font-size: 13px; }
+  /* 后台外观设置取色器窄屏加大触控 */
+  .admin-page .dec-color input[type="color"] { height: 38px; }
+  /* 原有规则 */
   .grid-3, .grid-2 { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; }
   .section { padding: 62px 0; }
@@ -662,4 +683,18 @@ td strong, td b { color: var(--text); }
   .hero-stats { gap: 22px; }
   .footer-grid { grid-template-columns: 1fr; }
   .logo span small { display: none; }
+}
+
+@media (max-width: 380px) {
+  .hero h1 { font-size: calc(var(--h1-size) * 0.82); }
+  .hero-stats { gap: 16px; }
+  .hero-stats .stat b { font-size: 23px; }
+  .metric b { font-size: 30px; }
+  .section-title { font-size: calc(var(--h1-size) * 0.62); }
+  .hero-visual { padding: 18px; }
+  .cta-band { padding: 26px 18px; }
+  .page-head { padding: 46px 0 34px; }
+  .page-head h1 { font-size: 26px; }
+  .to-top { right: 14px; bottom: 14px; }
+  .modal-mask { padding: 12px; }
 }

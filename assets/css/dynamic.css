@@ -310,6 +310,19 @@
   #userArea { margin-left: 0; }
   .gb-modal { max-width: 100%; }
   .gb-chat-wrap { height: 72vh; }
+  /* 窄屏：登录/注册/个人中心按钮加大触控与字号 */
+  .gb-auth-link, .gb-auth-cta, .gb-user-chip { font-size: 14px; padding: 6px 11px; min-height: 38px; }
+  .gb-modal-mask { padding: 14px; }
+  .gb-modal-body { padding: 16px; }
+  .gb-modal-foot { padding: 12px 16px; }
+  .gb-chat-input { padding: 10px; }
+  .gb-chat-input textarea { height: 44px; }
+  .gb-chat-msg { max-width: 88%; }
+}
+
+@media (max-width: 380px) {
+  .gb-auth-link, .gb-auth-cta { padding: 6px 9px; }
+  .gb-user-chip { max-width: 110px; }
 }
 
 /* ---------------- 输入框配色统一（防止文字与背景冲突） ---------------- */
