@@ -305,11 +305,204 @@
   padding: 10px 0 0;
 }
 
+/* ---------------- 聊天消息（房间制复用） ---------------- */
+.gb-chat-box {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.gb-chat-row {
+  max-width: 78%;
+  padding: 9px 13px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+  white-space: pre-wrap;
+  background: #161c30;
+  border: 1px solid var(--line-strong, #2a3450);
+  align-self: flex-start;
+}
+.gb-chat-row.mine {
+  align-self: flex-end;
+  background: rgba(79, 140, 255, .14);
+  border-color: rgba(79, 140, 255, .38);
+}
+.gb-chat-row b { display: block; font-size: 12.6px; color: #9dc2ff; margin-bottom: 3px; }
+.gb-chat-row .gb-chat-time { font-size: 11px; color: #6f7c99; margin-left: 6px; font-weight: 400; }
+.gb-chat-row p { margin: 0; }
+
+/* ---------------- KOOK 风格房间制（双栏） ---------------- */
+.gb-room-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 18px;
+  align-items: stretch;
+  max-width: 1120px;
+}
+
+/* 左栏：房间列表 */
+.gb-room-side {
+  background: #101528;
+  border: 1px solid var(--line-strong, #2a3450);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 640px;
+  overflow: hidden;
+}
+.gb-room-side-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line-strong, #2a3450);
+}
+.gb-room-side-head h3 { margin: 0; font-size: 15.6px; }
+.gb-room-search {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line-strong, #2a3450);
+}
+.gb-room-search input {
+  flex: 1;
+  min-width: 0;
+}
+.gb-room-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gb-room-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 12px;
+  border: 1px solid var(--line-strong, #2a3450);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .03);
+  cursor: pointer;
+  transition: all .18s ease;
+}
+.gb-room-item:hover { border-color: rgba(79, 140, 255, .5); background: rgba(79, 140, 255, .08); }
+.gb-room-item.active { border-color: rgba(79, 140, 255, .8); background: rgba(79, 140, 255, .16); box-shadow: 0 0 0 3px rgba(79, 140, 255, .12); }
+.gb-room-no {
+  flex: none;
+  min-width: 52px;
+  text-align: center;
+  padding: 4px 7px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4f8cff 0%, #8b5cf6 100%);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: .5px;
+}
+.gb-room-info { min-width: 0; }
+.gb-room-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #e9eefb);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gb-room-lock {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffcf6b;
+  border: 1px solid rgba(255, 207, 107, .45);
+  border-radius: 6px;
+  padding: 0 5px;
+  vertical-align: 1px;
+}
+.gb-room-meta {
+  font-size: 12px;
+  color: var(--muted, #8b96b0);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 右栏：聊天区 */
+.gb-room-chat { min-width: 0; display: flex; }
+.gb-room-chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 640px;
+  margin: 0;
+}
+.gb-room-chat-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.gb-room-chat-title { min-width: 0; }
+.gb-room-chat-title h3 { margin: 0; font-size: 15.6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gb-room-actions { display: inline-flex; gap: 8px; flex: none; }
+
+/* 管理弹窗 */
+.gb-modal-sm { max-width: 460px; }
+.gb-form-row { margin-bottom: 14px; }
+.gb-form-row label {
+  display: block;
+  font-size: 12.6px;
+  color: var(--muted, #8b96b0);
+  margin-bottom: 6px;
+}
+.gb-form-row input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.gb-manage-block {
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid var(--line-strong, #2a3450);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .02);
+}
+.gb-manage-title {
+  font-size: 13.4px;
+  font-weight: 800;
+  color: var(--text, #e9eefb);
+  margin-bottom: 10px;
+}
+.gb-danger-title { color: #ff8a8a; }
+.gb-room-members { display: flex; flex-direction: column; gap: 8px; }
+.gb-room-member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong, #2a3450);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .03);
+}
+.gb-room-member-name { flex: 1; min-width: 0; font-size: 13.6px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gb-room-member-time { font-size: 11.8px; color: var(--muted, #8b96b0); flex: none; }
+.btn-danger { background: rgba(255, 107, 107, .14); color: #ff8a8a; border: 1px solid rgba(255, 107, 107, .4); }
+.btn-danger:hover { background: rgba(255, 107, 107, .22); }
+
 /* ---------------- 小屏适配 ---------------- */
 @media (max-width: 820px) {
   #userArea { margin-left: 0; }
   .gb-modal { max-width: 100%; }
   .gb-chat-wrap { height: 72vh; }
+  /* 窄屏：房间制双栏变单栏（左栏上、右栏下） */
+  .gb-room-layout { grid-template-columns: 1fr; gap: 14px; }
+  .gb-room-side { height: auto; max-height: 46vh; }
+  .gb-room-chat-panel, .gb-room-chat { height: 68vh; }
+  .gb-room-search { flex-wrap: wrap; }
+  .gb-room-search input { flex: 1 1 100%; }
+  .gb-room-search .btn { flex: none; }
   /* 窄屏：登录/注册/个人中心按钮加大触控与字号 */
   .gb-auth-link, .gb-auth-cta, .gb-user-chip { font-size: 14px; padding: 6px 11px; min-height: 38px; }
   .gb-modal-mask { padding: 14px; }

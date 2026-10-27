@@ -86,11 +86,41 @@
     postMessage: function (content) { return request("POST", "/api/messages", { content: content }); },
     deleteMessage: function (id) { return request("DELETE", "/api/messages/" + id); },
 
-    /* 聊天 */
+    /* 聊天（大厅，保持不变） */
     listChat: function (after) {
       return request("GET", "/api/chat" + (after ? "?after=" + Number(after) : ""));
     },
     postChat: function (content) { return request("POST", "/api/chat", { content: content }); },
+
+    /* 房间（KOOK 风格房间制聊天室） */
+    roomList: function () { return request("GET", "/api/rooms"); },
+    roomCreate: function (name, password) {
+      return request("POST", "/api/rooms", { name: name, password: password || "" });
+    },
+    roomJoin: function (roomNo, password) {
+      return request("POST", "/api/rooms/join", { roomNo: Number(roomNo), password: password || "" });
+    },
+    roomLeave: function (roomNo) {
+      return request("POST", "/api/rooms/leave", { roomNo: Number(roomNo) });
+    },
+    roomMessages: function (roomNo, after) {
+      return request("GET", "/api/rooms/" + Number(roomNo) + "/messages" + (after ? "?after=" + Number(after) : ""));
+    },
+    roomSend: function (roomNo, content) {
+      return request("POST", "/api/rooms/" + Number(roomNo) + "/messages", { content: content });
+    },
+    roomUpdate: function (roomNo, patch) {
+      return request("PUT", "/api/rooms/" + Number(roomNo), patch || {});
+    },
+    roomDissolve: function (roomNo) {
+      return request("DELETE", "/api/rooms/" + Number(roomNo));
+    },
+    roomKick: function (roomNo, userId) {
+      return request("POST", "/api/rooms/" + Number(roomNo) + "/kick", { user_id: Number(userId) });
+    },
+    roomMembers: function (roomNo) {
+      return request("GET", "/api/rooms/" + Number(roomNo) + "/members");
+    },
 
     /* 内容 */
     getContent: function () { return request("GET", "/api/content"); },
