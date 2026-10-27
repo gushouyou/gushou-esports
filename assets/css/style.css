@@ -33,7 +33,7 @@
 /* ---------- 基础重置 ---------- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html { scroll-behavior: smooth; overflow-x: hidden; max-width: 100%; }
+html { scroll-behavior: smooth; overflow-x: clip; max-width: 100%; }
 
 body {
   font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", Arial, sans-serif;
@@ -42,8 +42,14 @@ body {
   line-height: 1.7;
   font-size: var(--body-size);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
+
+/* 前台页面：为 fixed 导航预留占位，避免首屏内容被遮挡；admin 后台不受影响 */
+body:not(.admin-body) { padding-top: var(--nav-h); }
+
+/* 锚点跳转不被 fixed 导航遮挡 */
+[id] { scroll-margin-top: calc(var(--nav-h) + 14px); }
 
 a { color: inherit; text-decoration: none; }
 ul, ol { list-style: none; }
@@ -67,8 +73,11 @@ body::before {
 
 /* ---------- 顶部导航 ---------- */
 .site-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
   z-index: 100;
   backdrop-filter: blur(14px);
   background: rgba(8, 13, 26, 0.82);
