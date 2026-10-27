@@ -619,14 +619,21 @@
 
   function doSave() {
     if (!draft) return;
-    if (S.save(draft)) {
-      dirty = false;
-      draft = S.get();
-      updateStatus();
-      toast("内容已保存，前台页面刷新后立即生效", "ok");
-    } else {
+    if (!S.save(draft)) {
       toast("保存失败：当前浏览器禁用了本地存储", "err");
+      return;
     }
+    dirty = false;
+    draft = S.get();
+    updateStatus();
+    toast("已保存到本机，正在同步云端…", "");
+    syncAllToCloud(draft, function (okCount, failCount, failedKeys) {
+      if (failCount === 0) {
+        toast("已保存并同步云端，全站即时生效", "ok");
+      } else {
+        toast("已保存本机，云端同步失败 " + failCount + " 项（" + failedKeys.join("、") + "），可点「同步内容到云端」重试", "err");
+      }
+    });
   }
 
   function doReset() {
@@ -660,6 +667,7 @@
       (g.fields || []).forEach(function (o) { if (keys.indexOf(o.k) < 0) keys.push(o.k); });
       (g.lists || []).forEach(function (L) { if (keys.indexOf(L.path) < 0) keys.push(L.path); });
     });
+    if (keys.indexOf("decoration") < 0) keys.push("decoration");
     return keys;
   }
 
@@ -670,6 +678,25 @@
         return sessionStorage.getItem("gb_admin_token") || "";
       });
     }
+  }
+
+  /* 全量同步云端：把本地数据的所有内容字段（含 decoration）逐 key 写入 /api/content */
+  function syncAllToCloud(data, done) {
+    if (!window.GB_API) { if (done) done(0, 1, ["API 未加载"]); return; }
+    cloudTokenInject();
+    var keys = collectSchemaKeys();
+    var ok = 0, fail = 0, failedKeys = [];
+    var i = 0;
+    function next() {
+      if (i >= keys.length) { if (done) done(ok, fail, failedKeys); return; }
+      var key = keys[i++];
+      var val = S.getPath(data, key);
+      if (val === undefined || val === null) { next(); return; }
+      var payload = (typeof val === "string") ? val : JSON.stringify(val);
+      window.GB_API.saveContent(key, payload).then(function () { ok++; next(); })
+        .catch(function () { fail++; failedKeys.push(key); next(); });
+    }
+    next();
   }
 
   /* 云端存的是字符串；优先尝试还原为 JSON 对象 / 数组，失败则视为普通字符串 */
@@ -902,6 +929,9 @@
     root.addEventListener("change", onInput);
     root.addEventListener("click", onClick);
 
+    initImagesPage();
+    initDecorPage();
+
     var save = document.getElementById("ctSave");
     if (save) save.addEventListener("click", doSave);
     var reset = document.getElementById("ctReset");
@@ -942,4 +972,170 @@
   }
 
   document.addEventListener("DOMContentLoaded", init);
+
+  /* ---------------- 图片管理（云端 KV） ---------------- */
+  function initImagesPage() {
+    if (!window.GB_API) return;
+    var input = document.getElementById("imgUploadInput");
+    var list = document.getElementById("imgList");
+    var empty = document.getElementById("imgEmpty");
+    var countText = document.getElementById("imgCountText");
+    if (!list) return;
+
+    function refresh() {
+      window.GB_API.listImages().then(function (res) {
+        var items = (res && res.list) || [];
+        if (countText) countText.textContent = "共 " + items.length + " 张";
+        if (!items.length) { list.innerHTML = ""; if (empty) empty.style.display = ""; return; }
+        if (empty) empty.style.display = "none";
+        list.innerHTML = items.map(function (it) {
+          var url = window.GB_API.imageUrl(it.key);
+          var size = Math.round((it.size || 0) / 1024) + " KB";
+          return '<div style="border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;background:var(--card)">' +
+            '<a href="' + url + '" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;height:150px;background:rgba(0,0,0,.3)">' +
+            '<img src="' + url + '" alt="' + S.esc(it.filename || it.key) + '" style="max-width:100%;max-height:100%;object-fit:contain"></a>' +
+            '<div style="padding:10px 12px">' +
+            '<div style="font-size:12.5px;color:var(--text);word-break:break-all;margin-bottom:4px">' + S.esc(it.filename || it.key) + "</div>" +
+            '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">' + size + " · " + url.replace(/^https?:\/\/[^/]+/, "") + "</div>" +
+            '<div style="display:flex;gap:8px">' +
+            '<button type="button" class="btn btn-ghost btn-sm" data-url="' + S.esc(url) + '">复制链接</button>' +
+            '<button type="button" class="btn btn-ghost btn-sm" data-key="' + S.esc(it.key) + '" style="color:var(--danger)">删除</button>' +
+            "</div></div></div>";
+        }).join("");
+      }).catch(function (e) {
+        list.innerHTML = "";
+        if (empty) {
+          empty.style.display = "";
+          var msg = empty.querySelector("div:last-child");
+          if (msg) msg.textContent = "图片列表加载失败：" + e.message;
+        }
+      });
+    }
+
+    if (input) input.addEventListener("change", function () {
+      var file = input.files && input.files[0];
+      input.value = "";
+      if (!file) return;
+      window.GB_API.uploadImage(file).then(function () {
+        toast("图片上传成功，已存到云端 KV，可直接复制链接使用", "ok");
+        refresh();
+      }).catch(function (e) { toast("上传失败：" + e.message, "err"); });
+    });
+
+    list.addEventListener("click", function (e) {
+      var t = e.target;
+      if (!t || !t.getAttribute) return;
+      var delKey = t.getAttribute("data-key");
+      if (delKey) {
+        if (!window.confirm("确定删除这张图片吗？删除后引用它的位置将失效，且不可恢复。")) return;
+        window.GB_API.deleteImage(delKey).then(function () { toast("图片已删除", "ok"); refresh(); })
+          .catch(function (e) { toast("删除失败：" + e.message, "err"); });
+        return;
+      }
+      var copyUrl = t.getAttribute("data-url");
+      if (copyUrl) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(copyUrl).then(function () { toast("链接已复制，可粘贴到「内容管理」图片字段", "ok"); },
+            function () { toast("复制失败，请手动选择链接复制", "err"); });
+        } else { toast("当前浏览器不支持剪贴板，请手动选择链接复制", "err"); }
+      }
+    });
+
+    refresh();
+  }
+
+  /* ---------------- 装饰设置（CSS 变量 / Logo / Hero 背景） ---------------- */
+  var DECOR_DEFAULTS = {
+    "--bg": "#080d1a", "--bg-soft": "#0e1526", "--card": "#131c31", "--card-hover": "#18233c",
+    "--line": "rgba(255, 255, 255, 0.08)", "--line-strong": "rgba(255, 255, 255, 0.16)",
+    "--text": "#e9eefb", "--muted": "#94a2c2", "--primary": "#4f8cff", "--primary-2": "#8b5cf6",
+    "--accent": "#ffb02e", "--success": "#22c98f", "--danger": "#ff5c7a",
+    "--grad": "linear-gradient(135deg, #4f8cff 0%, #8b5cf6 100%)",
+    "--radius": "16px", "--radius-sm": "10px"
+  };
+
+  function initDecorPage() {
+    var rootEl = document.getElementById("decRoot");
+    if (!rootEl) return;
+
+    if (!draft.decoration || typeof draft.decoration !== "object") draft.decoration = { cssVars: {}, logoText: "", heroBg: "" };
+    if (!draft.decoration.cssVars || typeof draft.decoration.cssVars !== "object") draft.decoration.cssVars = {};
+
+    function html() {
+      var vars = draft.decoration.cssVars;
+      var rows = Object.keys(DECOR_DEFAULTS).map(function (k) {
+        var v = (typeof vars[k] === "string" && vars[k].trim() !== "") ? vars[k] : DECOR_DEFAULTS[k];
+        return '<div class="field" style="margin-bottom:10px">' +
+          '<label style="font-size:12.8px;color:var(--muted)">' + k + "</label>" +
+          '<input type="text" data-var="' + k + '" value="' + S.esc(v) + '" placeholder="' + S.esc(DECOR_DEFAULTS[k]) + '"></div>';
+      }).join("");
+      return '<div class="panel-head"><h3>全站配色与装饰变量</h3><span class="panel-sub">修改即时预览，保存后前台刷新即生效</span></div>' +
+        '<div class="form-grid" style="margin-top:6px">' + rows + "</div>" +
+        '<div class="panel" style="margin-top:18px">' +
+          '<div class="panel-head"><h3>品牌装饰</h3></div>' +
+          '<div class="form-grid">' +
+            '<div class="field"><label>Logo 文字（覆盖左上角「顾」字，留空保持默认）</label><input type="text" id="dec-logo" value="' + S.esc(draft.decoration.logoText || "") + '" placeholder="顾"></div>' +
+            '<div class="field"><label>首页 Hero 背景图 URL（留空保持默认）</label><input type="text" id="dec-hero" value="' + S.esc(draft.decoration.heroBg || "") + '" placeholder="https://… 或 /api/img/…"></div>' +
+          "</div>" +
+        "</div>";
+    }
+
+    rootEl.innerHTML = '<div class="panel">' + html() + "</div>";
+
+    var saveBtn = document.getElementById("decSave");
+    var resetBtn = document.getElementById("decReset");
+
+    rootEl.addEventListener("input", function (e) {
+      var t = e.target;
+      var k = t.getAttribute && t.getAttribute("data-var");
+      if (k) {
+        draft.decoration.cssVars[k] = t.value;
+        if (k.indexOf("--") === 0) document.documentElement.style.setProperty(k, t.value);
+        return;
+      }
+      if (t.id === "dec-logo") {
+        draft.decoration.logoText = t.value;
+        var mark = document.querySelector(".logo-mark");
+        if (mark) mark.textContent = t.value.trim() || "顾";
+        return;
+      }
+      if (t.id === "dec-hero") {
+        draft.decoration.heroBg = t.value;
+        var hero = document.querySelector(".hero");
+        if (hero) {
+          var v = t.value.trim();
+          hero.style.backgroundImage = v ? "url('" + v + "')" : "";
+        }
+      }
+    });
+
+    if (saveBtn) saveBtn.addEventListener("click", function () {
+      if (!window.GB_API) { toast("云端 API 客户端未加载，请刷新页面后重试", "err"); return; }
+      if (!S.save(draft)) { toast("保存失败：浏览器禁用了本地存储", "err"); return; }
+      dirty = false;
+      draft = S.get();
+      toast("装饰已保存，正在同步云端…", "");
+      window.GB_API.saveContent("decoration", JSON.stringify(draft.decoration || {})).then(function () {
+        toast("装饰已保存并同步云端，全站即时生效", "ok");
+      }).catch(function () {
+        toast("已保存本机，云端同步失败，可到「内容管理」点「同步内容到云端」重试", "err");
+      });
+    });
+
+    if (resetBtn) resetBtn.addEventListener("click", function () {
+      if (!window.confirm("确定恢复默认装饰吗？你自定义的颜色与背景将被清除，前台回到默认样式。")) return;
+      draft.decoration.cssVars = {};
+      draft.decoration.logoText = "";
+      draft.decoration.heroBg = "";
+      Object.keys(DECOR_DEFAULTS).forEach(function (k) {
+        document.documentElement.style.setProperty(k, "");
+      });
+      var mark = document.querySelector(".logo-mark");
+      if (mark) mark.textContent = "顾";
+      var hero = document.querySelector(".hero");
+      if (hero) hero.style.backgroundImage = "";
+      rootEl.innerHTML = '<div class="panel">' + html() + "</div>";
+      toast("已恢复默认装饰，点「保存装饰并生效」正式写入云端", "");
+    });
+  }
 })();

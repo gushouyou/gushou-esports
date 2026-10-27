@@ -278,13 +278,18 @@
       nav: [
         { text: "首页", href: "index.html" },
         { text: "服务项目", href: "services.html" },
-        { text: "联系下单", href: "contact.html" },
-        { text: "管理后台", href: "admin.html" }
+        { text: "联系下单", href: "contact.html" }
       ],
       services: ["段位代练", "排位上分", "定级赛 / 定位赛", "双排陪玩"],
       contactLines: ["客服QQ：800-123-456", "微信：Gushou_CS", "邮箱：service@gushou.demo", "服务时间：7×24 小时"],
       copyright: "© 2026 顾手游电竞 · 本站为静态演示站点，所有数据均为示例内容",
       tip: "理性游戏 · 适度消费 · 未成年人禁止下单"
+    },
+
+    decoration: {
+      cssVars: {},
+      logoText: "",
+      heroBg: ""
     }
   };
 
@@ -726,6 +731,29 @@
     });
   }
 
+  /* 装饰注入：把后台「装饰设置」里的 CSS 变量 / Logo 文字 / Hero 背景实时注入页面 */
+  function applyDecoration(data) {
+    var dec = data && data.decoration;
+    if (!dec || typeof dec !== "object") return;
+    var vars = dec.cssVars;
+    if (vars && typeof vars === "object") {
+      Object.keys(vars).forEach(function (k) {
+        var v = vars[k];
+        if (typeof v === "string" && v.trim() !== "" && k.indexOf("--") === 0) {
+          document.documentElement.style.setProperty(k, v.trim());
+        }
+      });
+    }
+    if (typeof dec.logoText === "string" && dec.logoText.trim()) {
+      var mark = document.querySelector(".logo-mark");
+      if (mark) mark.textContent = dec.logoText.trim();
+    }
+    if (typeof dec.heroBg === "string" && dec.heroBg.trim()) {
+      var hero = document.querySelector(".hero");
+      if (hero) hero.style.backgroundImage = "url('" + dec.heroBg.trim() + "')";
+    }
+  }
+
   function render() {
     var data = get();
     renderText(data);
@@ -736,6 +764,7 @@
     renderOptions(data);
     renderAttrs(data);
     renderQr(data);
+    applyDecoration(data);
     return data;
   }
 
@@ -765,7 +794,8 @@
     CLOUD_API: CLOUD_API,
     loadCloudContent: loadCloudContent,
     getCloud: getCloud,
-    cloudStatus: cloudStatus
+    cloudStatus: cloudStatus,
+    applyDecoration: applyDecoration
   };
 
   document.addEventListener("DOMContentLoaded", function () {

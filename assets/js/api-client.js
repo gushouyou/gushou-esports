@@ -99,6 +99,28 @@
     },
     deleteContent: function (key) {
       return request("DELETE", "/api/content/" + encodeURIComponent(key));
-    }
+    },
+
+    /* 图片（Worker 存 KV：上传 / 列表 / 删除 / 直链） */
+    uploadImage: function (file) {
+      return new Promise(function (resolve, reject) {
+        if (!file || !/^image\//.test(file.type)) { reject(new Error("请选择图片文件")); return; }
+        if (file.size > 2 * 1024 * 1024) { reject(new Error("图片超过 2MB 限制")); return; }
+        var reader = new FileReader();
+        reader.onerror = function () { reject(new Error("读取文件失败")); };
+        reader.onload = function () {
+          var data = String(reader.result || "");
+          if (data.length > 2.9 * 1024 * 1024) { reject(new Error("图片超过 2MB 限制")); return; }
+          request("POST", "/api/upload", { filename: file.name || "image.png", data: data, type: file.type || "" })
+            .then(resolve, reject);
+        };
+        reader.readAsDataURL(file);
+      });
+    },
+    listImages: function () { return request("GET", "/api/images"); },
+    deleteImage: function (key) {
+      return request("DELETE", "/api/img/" + encodeURIComponent(key));
+    },
+    imageUrl: function (key) { return BASE + "/api/img/" + encodeURIComponent(key); }
   };
 })();
