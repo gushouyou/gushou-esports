@@ -33,7 +33,7 @@
 /* ---------- 基础重置 ---------- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html { scroll-behavior: smooth; overflow-x: hidden; }
+html { scroll-behavior: smooth; overflow-x: hidden; max-width: 100%; }
 
 body {
   font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", Arial, sans-serif;
@@ -84,7 +84,11 @@ body::before {
   gap: 20px;
 }
 
-.logo { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 24px; letter-spacing: 0.4px; }
+.logo {
+  display: flex; align-items: center; gap: 12px;
+  font-weight: 800; font-size: 24px; letter-spacing: 0.4px;
+  flex-shrink: 0; min-width: 0;
+}
 
 .logo-mark {
   width: 50px; height: 50px;
@@ -101,6 +105,8 @@ body::before {
 
 /* 备用图形 logo（当前品牌标识使用「顾」字，如需换回图标可放回 svg） */
 .logo-mark svg { width: 20px; height: 20px; fill: #fff; }
+/* 品牌文字保护：超长品牌名省略而非撑宽/溢出，避免与图标或右侧按钮重叠 */
+.logo > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .logo span small { display: block; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 1.8px; margin-top: 2px; }
 
 .nav-links { display: flex; align-items: center; gap: 4px; }
@@ -656,7 +662,7 @@ td strong, td b { color: var(--text); }
   #userArea { margin-left: 0; }
   /* 顶部品牌压缩，避免小屏溢出 */
   .logo { gap: 8px; font-size: 20px; }
-  .logo-mark { width: 40px; height: 40px; font-size: 20px; border-radius: 11px; }
+  .logo-mark { width: 40px; height: 40px; font-size: 20px; border-radius: 11px; box-shadow: 0 6px 14px -10px rgba(79, 140, 255, 0.9); }
   /* 触控与字号：移动端关键控件抬升 */
   .tab { min-height: 40px; }
   .faq-q { min-height: 52px; }
@@ -683,10 +689,16 @@ td strong, td b { color: var(--text); }
   .hero-stats { gap: 22px; }
   .footer-grid { grid-template-columns: 1fr; }
   .logo span small { display: none; }
+  /* 手机端大标题收敛：避免 46px 级标题在窄屏视觉突兀或撑出 */
+  .hero h1 { font-size: calc(var(--h1-size) * 0.72); overflow-wrap: break-word; word-break: break-word; max-width: 100%; }
 }
 
 @media (max-width: 380px) {
-  .hero h1 { font-size: calc(var(--h1-size) * 0.82); }
+  .hero h1 { font-size: calc(var(--h1-size) * 0.68); }
+  /* 极窄屏：品牌区进一步压缩，避免图标与文字/右侧按钮重叠 */
+  .logo { gap: 6px; font-size: 17px; letter-spacing: 0.2px; }
+  .logo-mark { width: 34px; height: 34px; font-size: 17px; border-radius: 9px; }
+  .nav-wrap { gap: 6px; }
   .hero-stats { gap: 16px; }
   .hero-stats .stat b { font-size: 23px; }
   .metric b { font-size: 30px; }
