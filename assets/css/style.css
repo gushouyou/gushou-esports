@@ -713,10 +713,11 @@ td strong, td b { color: var(--text); }
   .modal-mask { padding: 12px; }
 }
 
-/* ===== 立即咨询 置顶悬浮条（position fixed 通栏，始终可见） ===== */
+/* ===== 注册 置顶悬浮条（position fixed 通栏，始终可见） ===== */
 .gb-float-bar {
   position: fixed;
   top: 0; left: 0; right: 0;
+  width: 100%;
   height: var(--float-bar-h);
   display: flex;
   align-items: center;
@@ -735,6 +736,16 @@ td strong, td b { color: var(--text); }
 .gb-float-bar:hover { color: #fff; }
 .gb-float-bar .gb-arrow { transition: transform 0.2s ease; }
 .gb-float-bar:hover .gb-arrow { transform: translateX(4px); }
+/* button 元素重置，避免默认边框/字体/背景干扰 */
+button.gb-float-bar {
+  border: none;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+}
 
 /* 带悬浮条的前台页面：body 顶部留白，导航 sticky 下移避开遮挡 */
 body.gb-float-on { padding-top: var(--float-bar-h); }

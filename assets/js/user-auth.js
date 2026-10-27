@@ -275,5 +275,12 @@
   document.addEventListener("DOMContentLoaded", function () {
     initArea();
     renderUserArea();
+
+    /* 顶部置顶悬浮条（注册入口）：点击复用注册弹窗逻辑，与导航栏注册按钮行为一致 */
+    var floatReg = document.getElementById("gbFloatReg");
+    if (floatReg) floatReg.addEventListener("click", function (e) {
+      e.preventDefault();
+      openRegister();
+    });
   });
 })();
