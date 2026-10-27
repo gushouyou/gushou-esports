@@ -1044,43 +1044,158 @@
     refresh();
   }
 
-  /* ---------------- 装饰设置（CSS 变量 / Logo / Hero 背景） ---------------- */
+  /* ---------------- 外观设置（颜色 / 尺寸 / 布局 / Logo / Hero 背景） ---------------- */
+  /* CSS 变量 → 默认值（数据层仍用变量名，界面全部中文通俗控件） */
   var DECOR_DEFAULTS = {
     "--bg": "#080d1a", "--bg-soft": "#0e1526", "--card": "#131c31", "--card-hover": "#18233c",
     "--line": "rgba(255, 255, 255, 0.08)", "--line-strong": "rgba(255, 255, 255, 0.16)",
     "--text": "#e9eefb", "--muted": "#94a2c2", "--primary": "#4f8cff", "--primary-2": "#8b5cf6",
     "--accent": "#ffb02e", "--success": "#22c98f", "--danger": "#ff5c7a",
     "--grad": "linear-gradient(135deg, #4f8cff 0%, #8b5cf6 100%)",
-    "--radius": "16px", "--radius-sm": "10px"
+    "--grad-a": "#4f8cff", "--grad-b": "#8b5cf6",
+    "--radius": "16px", "--radius-sm": "10px",
+    "--max": "1200px", "--nav-h": "68px", "--h1-size": "46px", "--body-size": "15px", "--section-gap": "84px"
   };
+
+  /* 颜色区中文控件 */
+  var DECOR_COLOR_FIELDS = [
+    { name: "页面背景色", key: "--bg" },
+    { name: "浅色背景（区块交替背景）", key: "--bg-soft" },
+    { name: "卡片背景色", key: "--card" },
+    { name: "卡片悬停色", key: "--card-hover" },
+    { name: "正文文字色", key: "--text" },
+    { name: "次要文字色", key: "--muted" },
+    { name: "主色调（按钮 / 高亮）", key: "--primary" },
+    { name: "辅助色（渐变第二色）", key: "--primary-2" },
+    { name: "强调色（警示 / 徽标）", key: "--accent" },
+    { name: "成功色", key: "--success" },
+    { name: "危险色", key: "--danger" },
+    { name: "主按钮渐变（左色）", key: "--grad-a" },
+    { name: "主按钮渐变（右色）", key: "--grad-b" }
+  ];
+
+  /* 尺寸区中文控件 */
+  var DECOR_SIZE_FIELDS = [
+    { name: "页面内容宽度", key: "--max", min: 900, max: 1600, step: 10, def: 1200 },
+    { name: "圆角大小（卡片 / 按钮）", key: "--radius", min: 4, max: 32, step: 1, def: 16 },
+    { name: "小圆角", key: "--radius-sm", min: 2, max: 20, step: 1, def: 10 },
+    { name: "导航栏高度", key: "--nav-h", min: 48, max: 96, step: 2, def: 68 },
+    { name: "标题字号", key: "--h1-size", min: 28, max: 72, step: 1, def: 46 },
+    { name: "正文字号", key: "--body-size", min: 12, max: 24, step: 1, def: 15 },
+    { name: "区块间距", key: "--section-gap", min: 24, max: 120, step: 4, def: 84 }
+  ];
+
+  /* 首页区块（布局区） */
+  var DECOR_SECTIONS = [
+    { id: "hero", name: "主视觉区" },
+    { id: "industry", name: "产业介绍" },
+    { id: "metrics", name: "平台数据" },
+    { id: "advantages", name: "核心优势" },
+    { id: "steps", name: "服务流程" },
+    { id: "cta", name: "底部联系横幅" }
+  ];
+
+  function toHex(v) {
+    var m = /#([0-9a-fA-F]{6})/.exec(v || "");
+    return m ? "#" + m[1] : "#000000";
+  }
+
+  function decVar(k) {
+    var v = draft.decoration.cssVars[k];
+    return (typeof v === "string" && v.trim() !== "") ? v : DECOR_DEFAULTS[k];
+  }
+
+  function applyGrad() {
+    var a = decVar("--grad-a") || "#4f8cff";
+    var b = decVar("--grad-b") || "#8b5cf6";
+    var g = "linear-gradient(135deg, " + a + " 0%, " + b + " 100%)";
+    draft.decoration.cssVars["--grad"] = g;
+    document.documentElement.style.setProperty("--grad", g);
+  }
 
   function initDecorPage() {
     var rootEl = document.getElementById("decRoot");
     if (!rootEl) return;
 
-    if (!draft.decoration || typeof draft.decoration !== "object") draft.decoration = { cssVars: {}, logoText: "", heroBg: "" };
+    if (!draft.decoration || typeof draft.decoration !== "object") draft.decoration = { cssVars: {}, logoText: "", heroBg: "", layout: {} };
     if (!draft.decoration.cssVars || typeof draft.decoration.cssVars !== "object") draft.decoration.cssVars = {};
+    var lay = draft.decoration.layout;
+    if (!lay || typeof lay !== "object") { lay = draft.decoration.layout = {}; }
+    if (!Array.isArray(lay.hideSections)) lay.hideSections = [];
+    if (!Array.isArray(lay.sectionOrder) || !lay.sectionOrder.length) lay.sectionOrder = ["hero", "industry", "metrics", "advantages", "steps", "cta"];
+    if (!lay.gridCols) lay.gridCols = 3;
+
+    function renderLayoutOrder() {
+      var rows = lay.sectionOrder.map(function (id, i) {
+        var meta = DECOR_SECTIONS.filter(function (s) { return s.id === id; })[0];
+        var label = meta ? meta.name : id;
+        return '<div class="dec-order-row" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
+          '<span style="flex:1;color:var(--text)">' + label + "</span>" +
+          '<button type="button" class="btn btn-ghost btn-sm dec-order-up" data-i="' + i + '"' + (i === 0 ? " disabled" : "") + '>↑ 上移</button>' +
+          '<button type="button" class="btn btn-ghost btn-sm dec-order-down" data-i="' + i + '"' + (i === lay.sectionOrder.length - 1 ? " disabled" : "") + '>↓ 下移</button>' +
+        "</div>";
+      }).join("");
+      var wrap = document.getElementById("dec-order-list");
+      if (wrap) wrap.innerHTML = rows;
+    }
 
     function html() {
-      var vars = draft.decoration.cssVars;
-      var rows = Object.keys(DECOR_DEFAULTS).map(function (k) {
-        var v = (typeof vars[k] === "string" && vars[k].trim() !== "") ? vars[k] : DECOR_DEFAULTS[k];
-        return '<div class="field" style="margin-bottom:10px">' +
-          '<label style="font-size:12.8px;color:var(--muted)">' + k + "</label>" +
-          '<input type="text" data-var="' + k + '" value="' + S.esc(v) + '" placeholder="' + S.esc(DECOR_DEFAULTS[k]) + '"></div>';
+      var colorRows = DECOR_COLOR_FIELDS.map(function (f) {
+        var v = decVar(f.key);
+        return '<div class="field dec-color" style="margin-bottom:10px">' +
+          '<label style="font-size:12.8px;color:var(--muted)">' + f.name + "</label>" +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<input type="color" data-var="' + f.key + '" value="' + S.esc(toHex(v)) + '" style="width:46px;height:32px;padding:2px;background:#0a0f1e;border:1px solid var(--line-strong);border-radius:6px;cursor:pointer">' +
+            '<input type="text" data-hex="' + f.key + '" value="' + S.esc(v) + '" style="width:120px">' +
+          "</div>" +
+        "</div>";
       }).join("");
-      return '<div class="panel-head"><h3>全站配色与装饰变量</h3><span class="panel-sub">修改即时预览，保存后前台刷新即生效</span></div>' +
-        '<div class="form-grid" style="margin-top:6px">' + rows + "</div>" +
+      var sizeRows = DECOR_SIZE_FIELDS.map(function (f) {
+        var v = decVar(f.key);
+        var num = parseInt(v, 10);
+        if (isNaN(num)) num = f.def;
+        return '<div class="field" style="margin-bottom:10px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center"><label style="font-size:12.8px;color:var(--muted)">' + f.name + '</label><span class="dec-size-val" data-val="' + f.key + '" style="font-size:12.8px;color:var(--accent)">' + num + "px</span></div>" +
+          '<input type="range" data-var="' + f.key + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '" value="' + num + '" style="width:100%">' +
+        "</div>";
+      }).join("");
+      var hideRows = DECOR_SECTIONS.map(function (s) {
+        var checked = lay.hideSections.indexOf(s.id) >= 0 ? "checked" : "";
+        return '<div class="field" style="margin-bottom:6px">' +
+          '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer">' +
+            '<input type="checkbox" data-hide="' + s.id + '" ' + checked + "> " + s.name +
+          "</label>" +
+        "</div>";
+      }).join("");
+      var gridOpts = [2, 3, 4].map(function (n) {
+        return '<option value="' + n + '"' + (lay.gridCols === n ? " selected" : "") + ">" + n + " 个</option>";
+      }).join("");
+      return '<div class="panel-head"><h3>颜色设置</h3><span class="panel-sub">选择你喜欢的全站配色，修改即时预览</span></div>' +
+        '<div class="form-grid" style="margin-top:6px">' + colorRows + "</div>" +
+        '<div class="panel" style="margin-top:18px">' +
+          '<div class="panel-head"><h3>尺寸大小</h3><span class="panel-sub">拖动滑块调整，修改即时预览</span></div>' +
+          '<div class="form-grid" style="margin-top:6px">' + sizeRows + "</div>" +
+        "</div>" +
+        '<div class="panel" style="margin-top:18px">' +
+          '<div class="panel-head"><h3>首页布局</h3><span class="panel-sub">仅对首页生效，保存后前台首页刷新可见</span></div>' +
+          '<div class="form-grid" style="margin-top:6px">' +
+            '<div class="field"><label style="font-size:12.8px;color:var(--muted)">首页各区块显示 / 隐藏</label>' + hideRows + "</div>" +
+            '<div class="field"><label style="font-size:12.8px;color:var(--muted)">首页区块顺序（点按钮调整上下位置）</label><div id="dec-order-list"></div></div>' +
+            '<div class="field"><label style="font-size:12.8px;color:var(--muted)">产业介绍每行个数</label><select id="dec-gridcols">' + gridOpts + "</select></div>" +
+          "</div>" +
+        "</div>" +
         '<div class="panel" style="margin-top:18px">' +
           '<div class="panel-head"><h3>品牌装饰</h3></div>' +
           '<div class="form-grid">' +
             '<div class="field"><label>Logo 文字（覆盖左上角「顾」字，留空保持默认）</label><input type="text" id="dec-logo" value="' + S.esc(draft.decoration.logoText || "") + '" placeholder="顾"></div>' +
             '<div class="field"><label>首页 Hero 背景图 URL（留空保持默认）</label><input type="text" id="dec-hero" value="' + S.esc(draft.decoration.heroBg || "") + '" placeholder="https://… 或 /api/img/…"></div>' +
           "</div>" +
-        "</div>";
+        "</div>" +
+        '<p style="font-size:12.5px;color:var(--muted);margin-top:12px">建议：背景色用深色、正文文字用浅色，可保证页面清晰可读。</p>';
     }
 
     rootEl.innerHTML = '<div class="panel">' + html() + "</div>";
+    renderLayoutOrder();
 
     var saveBtn = document.getElementById("decSave");
     var resetBtn = document.getElementById("decReset");
@@ -1089,8 +1204,40 @@
       var t = e.target;
       var k = t.getAttribute && t.getAttribute("data-var");
       if (k) {
-        draft.decoration.cssVars[k] = t.value;
-        if (k.indexOf("--") === 0) document.documentElement.style.setProperty(k, t.value);
+        if (k === "--grad-a" || k === "--grad-b") {
+          draft.decoration.cssVars[k] = t.value;
+          var hexT = rootEl.querySelector('[data-hex="' + k + '"]');
+          if (hexT) hexT.value = t.value;
+          applyGrad();
+          return;
+        }
+        if (t.type === "color") {
+          draft.decoration.cssVars[k] = t.value;
+          var hexT2 = rootEl.querySelector('[data-hex="' + k + '"]');
+          if (hexT2) hexT2.value = t.value;
+          document.documentElement.style.setProperty(k, t.value);
+          return;
+        }
+        if (t.type === "range") {
+          var v = t.value + "px";
+          draft.decoration.cssVars[k] = v;
+          var valSpan = rootEl.querySelector('[data-val="' + k + '"]');
+          if (valSpan) valSpan.textContent = v;
+          document.documentElement.style.setProperty(k, v);
+          return;
+        }
+        return;
+      }
+      var hk = t.getAttribute && t.getAttribute("data-hex");
+      if (hk) {
+        var hVal = t.value.trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(hVal)) {
+          draft.decoration.cssVars[hk] = hVal;
+          var colorT = rootEl.querySelector('[data-var="' + hk + '"]');
+          if (colorT) colorT.value = hVal;
+          if (hk === "--grad-a" || hk === "--grad-b") { applyGrad(); return; }
+          document.documentElement.style.setProperty(hk, hVal);
+        }
         return;
       }
       if (t.id === "dec-logo") {
@@ -1103,10 +1250,37 @@
         draft.decoration.heroBg = t.value;
         var hero = document.querySelector(".hero");
         if (hero) {
-          var v = t.value.trim();
-          hero.style.backgroundImage = v ? "url('" + v + "')" : "";
+          var hv = t.value.trim();
+          hero.style.backgroundImage = hv ? "url('" + hv + "')" : "";
         }
+        return;
       }
+      if (t.id === "dec-gridcols") {
+        lay.gridCols = parseInt(t.value, 10);
+        return;
+      }
+      var hideId = t.getAttribute && t.getAttribute("data-hide");
+      if (hideId) {
+        var idx = lay.hideSections.indexOf(hideId);
+        if (t.checked && idx < 0) lay.hideSections.push(hideId);
+        if (!t.checked && idx >= 0) lay.hideSections.splice(idx, 1);
+        var sec = document.querySelector('[data-section="' + hideId + '"]');
+        if (sec) sec.classList.toggle("gb-hidden", t.checked);
+      }
+    });
+
+    rootEl.addEventListener("click", function (e) {
+      var up = e.target.closest ? e.target.closest(".dec-order-up") : null;
+      var down = e.target.closest ? e.target.closest(".dec-order-down") : null;
+      if (!up && !down) return;
+      var btn = up || down;
+      var i = parseInt(btn.getAttribute("data-i"), 10);
+      var j = up ? i - 1 : i + 1;
+      if (j < 0 || j >= lay.sectionOrder.length) return;
+      var tmp = lay.sectionOrder[i];
+      lay.sectionOrder[i] = lay.sectionOrder[j];
+      lay.sectionOrder[j] = tmp;
+      renderLayoutOrder();
     });
 
     if (saveBtn) saveBtn.addEventListener("click", function () {
@@ -1114,19 +1288,23 @@
       if (!S.save(draft)) { toast("保存失败：浏览器禁用了本地存储", "err"); return; }
       dirty = false;
       draft = S.get();
-      toast("装饰已保存，正在同步云端…", "");
+      lay = draft.decoration.layout;
+      toast("外观已保存，正在同步云端…", "");
       window.GB_API.saveContent("decoration", JSON.stringify(draft.decoration || {})).then(function () {
-        toast("装饰已保存并同步云端，全站即时生效", "ok");
+        toast("外观已保存并同步云端，全站即时生效", "ok");
       }).catch(function () {
         toast("已保存本机，云端同步失败，可到「内容管理」点「同步内容到云端」重试", "err");
       });
     });
 
     if (resetBtn) resetBtn.addEventListener("click", function () {
-      if (!window.confirm("确定恢复默认装饰吗？你自定义的颜色与背景将被清除，前台回到默认样式。")) return;
+      if (!window.confirm("确定恢复默认外观吗？你自定义的颜色、尺寸与布局将被清除，前台回到默认样式。")) return;
       draft.decoration.cssVars = {};
       draft.decoration.logoText = "";
       draft.decoration.heroBg = "";
+      lay.hideSections = [];
+      lay.sectionOrder = ["hero", "industry", "metrics", "advantages", "steps", "cta"];
+      lay.gridCols = 3;
       Object.keys(DECOR_DEFAULTS).forEach(function (k) {
         document.documentElement.style.setProperty(k, "");
       });
@@ -1134,8 +1312,12 @@
       if (mark) mark.textContent = "顾";
       var hero = document.querySelector(".hero");
       if (hero) hero.style.backgroundImage = "";
+      document.querySelectorAll(".gb-hidden").forEach(function (el) {
+        el.classList.remove("gb-hidden");
+      });
       rootEl.innerHTML = '<div class="panel">' + html() + "</div>";
-      toast("已恢复默认装饰，点「保存装饰并生效」正式写入云端", "");
+      renderLayoutOrder();
+      toast("已恢复默认外观，点「保存外观并生效」正式写入云端", "");
     });
   }
 })();

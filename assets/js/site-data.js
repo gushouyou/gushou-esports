@@ -289,7 +289,12 @@
     decoration: {
       cssVars: {},
       logoText: "",
-      heroBg: ""
+      heroBg: "",
+      layout: {
+        hideSections: [],
+        sectionOrder: ["hero", "industry", "metrics", "advantages", "steps", "cta"],
+        gridCols: 3
+      }
     }
   };
 
@@ -731,7 +736,7 @@
     });
   }
 
-  /* 装饰注入：把后台「装饰设置」里的 CSS 变量 / Logo 文字 / Hero 背景实时注入页面 */
+  /* 装饰注入：把后台「外观设置」里的 CSS 变量 / Logo 文字 / Hero 背景 / 布局实时注入页面 */
   function applyDecoration(data) {
     var dec = data && data.decoration;
     if (!dec || typeof dec !== "object") return;
@@ -751,6 +756,42 @@
     if (typeof dec.heroBg === "string" && dec.heroBg.trim()) {
       var hero = document.querySelector(".hero");
       if (hero) hero.style.backgroundImage = "url('" + dec.heroBg.trim() + "')";
+    }
+    /* ---- 可视化布局 ---- */
+    var layout = dec.layout;
+    if (!layout || typeof layout !== "object") return;
+    /* 区块显隐 */
+    if (Array.isArray(layout.hideSections)) {
+      layout.hideSections.forEach(function (id) {
+        var el = document.querySelector('[data-section="' + id + '"]');
+        if (el) el.classList.add("gb-hidden");
+      });
+    }
+    /* 首页区块顺序重排（仅 index.html：body[data-page=home]） */
+    if (Array.isArray(layout.sectionOrder) && layout.sectionOrder.length) {
+      var isHome = document.body && document.body.dataset && document.body.dataset.page === "home";
+      if (isHome) {
+        var main = document.querySelector("main");
+        if (main) {
+          var map = {};
+          main.querySelectorAll("[data-section]").forEach(function (sec) {
+            map[sec.getAttribute("data-section")] = sec;
+          });
+          layout.sectionOrder.forEach(function (id) {
+            var sec = map[id];
+            if (sec) main.appendChild(sec);
+          });
+        }
+      }
+    }
+    /* 产业介绍每行个数 */
+    if (layout.gridCols) {
+      var n = parseInt(layout.gridCols, 10);
+      var gridEl = document.querySelector('[data-gb-list="industry.cards"]');
+      if (gridEl && n >= 2 && n <= 4) {
+        gridEl.classList.remove("grid-2", "grid-3", "grid-4");
+        gridEl.classList.add("grid-" + n);
+      }
     }
   }
 
