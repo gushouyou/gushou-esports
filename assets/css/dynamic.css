@@ -24,6 +24,95 @@
   font-size: 13px;
 }
 
+/* 未登录：登录/注册独立按钮组（右侧导航独立胶囊区） */
+.gb-auth-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--line-strong, #2a3450);
+  border-radius: 999px;
+  margin-left: 6px;
+}
+.gb-auth-link,
+.gb-auth-cta {
+  border: none;
+  border-radius: 999px;
+  padding: 6px 15px;
+  font-size: 13.4px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.gb-auth-link { background: transparent; color: var(--text, #e9eefb); }
+.gb-auth-link:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.gb-auth-cta {
+  background: var(--grad, linear-gradient(135deg, #4f8cff 0%, #8b5cf6 100%));
+  color: #fff;
+  box-shadow: 0 8px 18px -10px rgba(79, 140, 255, 0.9);
+}
+.gb-auth-cta:hover { transform: translateY(-1px); }
+
+/* 已登录：用户名即个人中心入口 */
+.gb-user-chip {
+  border: 1px solid var(--line-strong, #2a3450);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text, #e9eefb);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 13.4px;
+  font-weight: 700;
+  cursor: pointer;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.gb-user-chip:hover { color: #fff; border-color: rgba(79, 140, 255, 0.5); background: rgba(79, 140, 255, 0.14); }
+
+/* 个人中心面板 */
+.gb-profile { display: flex; flex-direction: column; gap: 11px; }
+.gb-profile-head {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(79, 140, 255, 0.14), rgba(139, 92, 246, 0.10));
+  border: 1px solid var(--line-strong, #2a3450);
+  border-radius: 12px;
+}
+.gb-profile-avatar {
+  width: 46px; height: 46px; flex: none;
+  border-radius: 50%;
+  background: var(--grad, linear-gradient(135deg, #4f8cff 0%, #8b5cf6 100%));
+  color: #fff;
+  font-size: 20px; font-weight: 800;
+  display: grid; place-items: center;
+}
+.gb-profile-name { display: block; font-size: 16px; font-weight: 800; color: var(--text, #e9eefb); }
+.gb-profile-role {
+  display: inline-block; margin-top: 4px;
+  font-size: 11.6px; font-weight: 700;
+  color: #9dc2ff;
+  background: rgba(79, 140, 255, 0.14);
+  border: 1px solid rgba(79, 140, 255, 0.3);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+.gb-profile-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line-strong, #2a3450);
+  border-radius: 10px;
+}
+.gb-profile-item .gp-label { font-size: 13px; color: var(--muted, #8b96b0); }
+.gb-profile-item .gp-val { font-size: 14px; font-weight: 700; color: var(--text, #e9eefb); word-break: break-all; }
+.gb-profile-item .gp-val.gp-empty { font-weight: 600; color: var(--muted, #8b96b0); }
+.gb-bind-hint { font-size: 12.3px; color: var(--muted, #8b96b0); line-height: 1.7; margin: 0; }
+
 /* ---------------- 通用模态框 ---------------- */
 .gb-modal-mask {
   position: fixed;

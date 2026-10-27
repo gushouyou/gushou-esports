@@ -181,21 +181,58 @@
     });
   }
 
+  /* ---------------- 个人中心 ---------------- */
+  function openProfile() {
+    var user = A.getUser() || {};
+    var roleName = user.role === "admin" ? "管理员" : "普通用户";
+    var idText = (user.id != null && user.id !== "") ? esc(String(user.id)) : "—";
+    var nameText = user.username ? esc(user.username) : "—";
+    var avatarChar = nameText === "—" ? "顾" : esc(String(user.username).charAt(0).toUpperCase());
+    openModal("个人中心",
+      '<div class="gb-profile">' +
+      '<div class="gb-profile-head">' +
+      '<span class="gb-profile-avatar">' + avatarChar + "</span>" +
+      '<div><b class="gb-profile-name">' + nameText + "</b>" +
+      '<span class="gb-profile-role">' + esc(roleName) + "</span></div>" +
+      "</div>" +
+      '<div class="gb-profile-item"><span class="gp-label">用户 ID</span><span class="gp-val">' + idText + "</span></div>" +
+      '<div class="gb-profile-item"><span class="gp-label">账号</span><span class="gp-val">' + nameText + "</span></div>" +
+      '<div class="gb-profile-item"><span class="gp-label">角色</span><span class="gp-val">' + esc(roleName) + "</span></div>" +
+      '<div class="gb-profile-item"><span class="gp-label">绑定手机</span><span class="gp-val gp-empty">未绑定</span></div>' +
+      '<div class="gb-profile-item"><span class="gp-label">绑定微信</span><span class="gp-val gp-empty">未绑定</span></div>' +
+      '<p class="gb-bind-hint">注：当前账号体系仅含用户 ID / 账号 / 角色字段，未开放手机、微信等绑定信息，以上两项如实展示为“未绑定”。</p>' +
+      "</div>",
+      '<button class="btn btn-ghost btn-sm" type="button" id="gbPfOrders">我的订单</button>' +
+      '<button class="btn btn-primary btn-sm" type="button" id="gbPfLogout">退出登录</button>');
+
+    var pfOrders = document.getElementById("gbPfOrders");
+    if (pfOrders) pfOrders.addEventListener("click", openOrders);
+    var pfLogout = document.getElementById("gbPfLogout");
+    if (pfLogout) pfLogout.addEventListener("click", function () {
+      closeModal();
+      A.logout();
+      renderUserArea();
+      toast("已退出登录", "ok");
+    });
+  }
+
   /* ---------------- 用户区渲染 ---------------- */
   function renderUserArea() {
     var area = getArea();
     if (!area) return;
     if (!A.isLoggedIn()) {
       area.innerHTML =
-        '<button class="btn btn-ghost btn-sm" type="button" data-ua="login">登录</button>' +
-        '<button class="btn btn-primary btn-sm" type="button" data-ua="register">注册</button>';
+        '<span class="gb-auth-group">' +
+        '<button class="gb-auth-link" type="button" data-ua="login">登录</button>' +
+        '<button class="gb-auth-cta" type="button" data-ua="register">注册</button>' +
+        "</span>";
       return;
     }
     var user = A.getUser() || {};
     var name = user.username || "用户";
     area.innerHTML =
       '<span class="gb-user-ico">👤</span>' +
-      '<span class="gb-user-name" title="' + esc(name) + '">' + esc(name) + "</span>" +
+      '<button class="gb-user-chip" type="button" data-ua="profile" title="打开个人中心">' + esc(name) + "</button>" +
       '<button class="btn btn-ghost btn-sm" type="button" data-ua="orders">我的订单</button>' +
       '<button class="btn btn-ghost btn-sm" type="button" data-ua="logout">退出</button>';
   }
@@ -209,6 +246,7 @@
       var act = btn.getAttribute("data-ua");
       if (act === "login") openLogin();
       else if (act === "register") openRegister();
+      else if (act === "profile") openProfile();
       else if (act === "orders") openOrders();
       else if (act === "logout") {
         A.logout();
@@ -225,6 +263,7 @@
     openLogin: openLogin,
     openRegister: openRegister,
     openOrders: openOrders,
+    openProfile: openProfile,
     /* 需要先登录后继续（如提交订单）：弹登录框，登录成功后执行 cb */
     requireLogin: function (cb) {
       pendingCallback = cb;

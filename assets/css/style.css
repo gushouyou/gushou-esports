@@ -70,7 +70,8 @@ body::before {
   border-bottom: 1px solid var(--line);
 }
 
-.nav {
+.nav,
+.nav-wrap {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -78,15 +79,15 @@ body::before {
   gap: 20px;
 }
 
-.logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 19px; letter-spacing: 0.4px; }
+.logo { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 24px; letter-spacing: 0.4px; }
 
 .logo-mark {
-  width: 36px; height: 36px;
+  width: 50px; height: 50px;
   display: grid; place-items: center;
-  border-radius: 11px;
+  border-radius: 14px;
   background: var(--grad);
-  box-shadow: 0 8px 20px -8px rgba(79, 140, 255, 0.9);
-  font-size: 18px;
+  box-shadow: 0 10px 26px -8px rgba(79, 140, 255, 0.95);
+  font-size: 25px;
   color: #fff;                 /* 品牌标识字「顾」（顾手游电竞） */
   font-weight: 800;
   line-height: 1;
@@ -95,7 +96,7 @@ body::before {
 
 /* 备用图形 logo（当前品牌标识使用「顾」字，如需换回图标可放回 svg） */
 .logo-mark svg { width: 20px; height: 20px; fill: #fff; }
-.logo span small { display: block; font-size: 10.5px; font-weight: 500; color: var(--muted); letter-spacing: 1.6px; }
+.logo span small { display: block; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 1.8px; margin-top: 2px; }
 
 .nav-links { display: flex; align-items: center; gap: 4px; }
 
@@ -427,6 +428,10 @@ td strong, td b { color: var(--text); }
 
 /* ---------- 页脚 ---------- */
 .site-footer { border-top: 1px solid var(--line); padding: 52px 0 26px; margin-top: 40px; position: relative; z-index: 1; }
+/* 页脚品牌保持原尺寸，避免顶部品牌放大后失衡 */
+.site-footer .logo { font-size: 19px; gap: 10px; }
+.site-footer .logo-mark { width: 36px; height: 36px; font-size: 18px; border-radius: 11px; box-shadow: 0 8px 20px -8px rgba(79, 140, 255, 0.9); }
+.site-footer .logo span small { font-size: 10.5px; font-weight: 500; margin-top: 0; }
 .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 34px; margin-bottom: 36px; }
 .footer-grid h4 { font-size: 14px; margin-bottom: 14px; }
 .footer-grid p, .footer-grid a { color: var(--muted); font-size: 13.6px; display: block; margin-bottom: 9px; }
