@@ -362,6 +362,12 @@
   padding: 14px 16px;
   border-bottom: 1px solid var(--line-strong, #2a3450);
 }
+.gb-room-side-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .gb-room-side-head h3 { margin: 0; font-size: 15.6px; }
 .gb-room-search {
   display: flex;
