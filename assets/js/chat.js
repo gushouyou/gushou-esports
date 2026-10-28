@@ -449,6 +449,7 @@
           var self = me && me.name && m.username === me.name;
           return '<div class="gb-room-member">' +
             '<span class="gb-room-member-name">' + esc(m.username) + (self ? "（我）" : "") + "</span>" +
+            '<span class="gb-room-member-did">#' + esc(m.digital_id != null ? String(m.digital_id) : "?") + "</span>" +
             '<span class="gb-room-member-time">' + esc(fmtTime(m.joined_at)) + " 加入</span>" +
             (self ? "" : '<button class="btn btn-danger btn-sm" data-kick="' + m.user_id + '">踢出</button>') +
             "</div>";
