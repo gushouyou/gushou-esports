@@ -492,6 +492,7 @@
   background: rgba(255, 255, 255, .03);
 }
 .gb-room-member-name { flex: 1; min-width: 0; font-size: 13.6px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gb-room-member-did { flex: none; font-size: 11.8px; color: var(--accent, #7289da); margin: 0 8px 0 6px; font-weight: 600; }
 .gb-room-member-time { font-size: 11.8px; color: var(--muted, #8b96b0); flex: none; }
 .btn-danger { background: rgba(255, 107, 107, .14); color: #ff8a8a; border: 1px solid rgba(255, 107, 107, .4); }
 .btn-danger:hover { background: rgba(255, 107, 107, .22); }

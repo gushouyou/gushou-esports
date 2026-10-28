@@ -112,8 +112,8 @@
         return '<div class="gb-room-item' + (isCur ? " active" : "") + '" data-no="' + r.room_no + '" role="button" tabindex="0">' +
           '<span class="gb-room-no">' + r.room_no + "</span>" +
           '<div class="gb-room-info">' +
-            '<div class="gb-room-name">' + esc(r.name) + (r.has_pass ? '<span class="gb-room-lock" title="密码房">密</span>' : "") + "</div>" +
-            '<div class="gb-room-meta">成员 ' + r.member_count + " · 房主 " + esc(r.owner_name || "?") + "</div>" +
+            '<div class="gb-room-name">' + esc(r.name) + (r.has_pass ? '<span class="gb-room-lock" title="密码房">🔒</span>' : "") + "</div>" +
+            '<div class="gb-room-meta">成员 ' + r.member_count + " · 👑 " + esc(r.owner_name || "?") + "</div>" +
           "</div></div>";
       }).join("");
     }
@@ -600,7 +600,23 @@
       if (!ev.candidate) return;
       sendSignal(userId, { type: "ice", candidate: ev.candidate });
     };
-    pc.ontrack = function () { /* 远端音频自动播放，无需显式渲染 */ };
+    pc.ontrack = function (ev) {
+      if (!ev || !ev.streams || !ev.streams.length) return;
+      try {
+        var audio = document.createElement("audio");
+        audio.autoplay = true;
+        audio.srcObject = ev.streams[0];
+        var holder = $("#gbVoiceAudio");
+        if (!holder) {
+          holder = document.createElement("div");
+          holder.id = "gbVoiceAudio";
+          holder.style.display = "none";
+          document.body.appendChild(holder);
+        }
+        holder.appendChild(audio);
+        audio.play().catch(function () {});
+      } catch (e) {}
+    };
     return pc;
   }
 
@@ -685,6 +701,12 @@
     requireLogin(function () {
       window.GB_API.voiceJoin(current.room_no)
         .then(function (data) {
+          var joinList = (data && Array.isArray(data.peers)) ? data.peers : [];
+          if (joinList.length > 6) {
+            if (current && current.room_no !== 0) window.GB_API.voiceLeave(current.room_no).catch(function () {});
+            showErr("语音人数已满（免费直连模式上限 6 人）");
+            return;
+          }
           voice.joined = true;
           voice.micOn = true;
           voice.sigSince = 0;
