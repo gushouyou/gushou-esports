@@ -588,9 +588,36 @@
     window.GB_API.signalSend(current.room_no, toUserId, data).catch(function () { /* 信令失败静默 */ });
   }
 
+  /* 多 STUN + TURN 兜底：解决对称 NAT / 防火墙下打洞失败导致的"双账号互相听不到声音" */
+  var ICE_SERVERS = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun.services.mozilla.com" },
+    { urls: "stun:openrelay.metered.ca:80" },
+    { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
+    { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" }
+  ];
+
+  /* ICE 连接失败 / 断开后的自愈：关闭旧连接，延迟重新发起 offer */
+  function retryPeer(userId) {
+    var pc = voice.peers[userId];
+    if (!pc) return;
+    try { pc.close(); } catch (e) {}
+    delete voice.peers[userId];
+    if (!voice.joined || !current || current.room_no === 0) return;
+    voice.retryTimers = voice.retryTimers || {};
+    if (voice.retryTimers[userId]) return;
+    voice.retryTimers[userId] = true;
+    setTimeout(function () {
+      if (voice.retryTimers) delete voice.retryTimers[userId];
+      if (voice.joined && current && current.room_no !== 0) offerTo(userId);
+    }, 1200);
+  }
+
   function ensurePc(userId) {
     if (voice.peers[userId]) return voice.peers[userId];
-    var pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    var pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     voice.peers[userId] = pc;
     if (voice.stream) {
       voice.stream.getTracks().forEach(function (t) {
@@ -618,15 +645,27 @@
         audio.play().catch(function () {});
       } catch (e) {}
     };
+    pc.oniceconnectionstatechange = function () {
+      try {
+        var st = pc.iceConnectionState;
+        if (st === "failed" || st === "disconnected") retryPeer(userId);
+      } catch (e) {}
+    };
     return pc;
   }
 
-  function offerTo(userId) {
+  function offerTo(userId, retries) {
+    retries = retries || 0;
     var pc = ensurePc(userId);
     pc.createOffer()
       .then(function (offer) { return pc.setLocalDescription(offer); })
       .then(function () { sendSignal(userId, { type: "offer", sdp: pc.localDescription }); })
-      .catch(function () { /* glare/失败静默，成员轮询下轮补偿 */ });
+      .catch(function () {
+        /* glare / 瞬时失败：小间隔重试，最多 3 次 */
+        if (retries < 3) {
+          setTimeout(function () { offerTo(userId, retries + 1); }, 1200);
+        }
+      });
   }
 
   function handleSignal(sig) {
@@ -637,16 +676,33 @@
       try { data = JSON.parse(data); } catch (e) { return; }
     }
     if (!data || !data.type) return;
-    if (data.type === "offer") {
-      var pc = ensurePc(from);
-      pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: data.sdp }))
+
+    function settleOffer(pc) {
+      return pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: data.sdp }))
         .then(function () { return pc.createAnswer(); })
         .then(function (answer) { return pc.setLocalDescription(answer); })
-        .then(function () { sendSignal(from, { type: "answer", sdp: pc.localDescription }); })
-        .catch(function () { /* 处理失败静默 */ });
+        .then(function () { sendSignal(from, { type: "answer", sdp: pc.localDescription }); });
+    }
+
+    if (data.type === "offer") {
+      var pc = ensurePc(from);
+      var st = pc.signalingState;
+      if (st === "stable") {
+        settleOffer(pc).catch(function () {});
+      } else if (st === "have-local-offer") {
+        /* glare：双方同时发起 offer，本侧回滚后再接受远端（礼貌策略） */
+        pc.setLocalDescription({ type: "rollback" })
+          .then(function () { return settleOffer(pc); })
+          .catch(function () { settleOffer(pc).catch(function () {}); });
+      } else {
+        /* have-remote-offer 等中间态：稍后重新 offer，由重试兜底 */
+        setTimeout(function () { offerTo(from); }, 1200);
+      }
     } else if (data.type === "answer") {
       var pc2 = voice.peers[from];
-      if (pc2) pc2.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: data.sdp })).catch(function () {});
+      if (pc2 && pc2.signalingState === "have-local-offer") {
+        pc2.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: data.sdp })).catch(function () {});
+      }
     } else if (data.type === "ice") {
       var pc3 = voice.peers[from];
       if (pc3 && data.candidate) pc3.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(function () {});
@@ -755,6 +811,7 @@
       try { voice.peers[uid].close(); } catch (e) {}
     });
     voice.peers = {};
+    voice.retryTimers = {};
     if (voice.stream) {
       voice.stream.getTracks().forEach(function (t) {
         try { t.stop(); } catch (e) {}

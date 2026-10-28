@@ -613,9 +613,29 @@
     });
   }
 
+  /* 页脚导航过滤：移除已删除的留言板入口，并把"在线聊天/语音房"统一为"聊天室" */
+  function sanitizeNavItems(items) {
+    if (!Array.isArray(items)) return items;
+    return items.filter(function (it) {
+      if (!it || typeof it !== "object") return true;
+      if (String(it.href || "").indexOf("guestbook.html") > -1) return false;
+      if (it.text === "留言板") return false;
+      return true;
+    }).map(function (it) {
+      if (it && typeof it === "object" && (it.text === "在线聊天" || it.text === "语音房")) {
+        var copy = {};
+        for (var k in it) { if (Object.prototype.hasOwnProperty.call(it, k)) copy[k] = it[k]; }
+        copy.text = "聊天室";
+        return copy;
+      }
+      return it;
+    });
+  }
+
   function renderLists(data) {
     document.querySelectorAll("[data-gb-list]").forEach(function (box) {
       var items = getPath(data, box.getAttribute("data-gb-list"));
+      if (box.getAttribute("data-gb-tpl") === "footerNav") items = sanitizeNavItems(items);
       var tpl = TPL[box.getAttribute("data-gb-tpl")];
       if (!tpl || !Array.isArray(items)) return;
       box.innerHTML = items.map(function (it) { return tpl(it); }).join("");

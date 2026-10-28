@@ -240,6 +240,7 @@
     initNavSwitch();
     initActions();
     loadCloudOrders().then(renderAll);
+    loadChatroom();
   }
 
   function tickClock() {
@@ -534,6 +535,208 @@
     });
   }
 
+  /* ---------------- 聊天室管理（云端 admin API） ---------------- */
+  var cloudUsers = [];
+  var cloudRooms = [];
+  var usersLoaded = false;
+  var roomsLoaded = false;
+
+  function loadChatroom() {
+    if (!API) { toast("后端连接失败：登录组件未加载", "err"); return Promise.resolve(); }
+    return Promise.all([
+      API.adminListUsers().then(function (res) {
+        cloudUsers = (res && Array.isArray(res.list) ? res.list : []).slice();
+        usersLoaded = true;
+        renderChatroomUsers();
+      }).catch(function (err) {
+        usersLoaded = false;
+        toast("用户列表加载失败：" + (err.message || "后端连接失败"), "err");
+        renderChatroomUsers();
+      }),
+      API.adminListRooms().then(function (res) {
+        cloudRooms = (res && Array.isArray(res.list) ? res.list : []).slice();
+        roomsLoaded = true;
+        renderChatroomRooms();
+      }).catch(function (err) {
+        roomsLoaded = false;
+        toast("房间列表加载失败：" + (err.message || "后端连接失败"), "err");
+        renderChatroomRooms();
+      })
+    ]);
+  }
+
+  function rolePill(r) {
+    return r === "admin"
+      ? "<span class='pill pill-ok'>管理员</span>"
+      : "<span class='pill pill-mute'>用户</span>";
+  }
+  function passPill(h) {
+    return h ? "<span class='pill pill-warn'>已设密</span>" : "<span class='pill pill-mute'>无密码</span>";
+  }
+
+  function renderChatroomUsers() {
+    var body = $("#chatroomUserBody");
+    var empty = $("#chatroomUserEmpty");
+    if (!body) return;
+    if (!usersLoaded) {
+      empty.style.display = "none";
+      body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted)">后端连接失败，无法加载用户列表</td></tr>';
+      return;
+    }
+    if (!cloudUsers.length) {
+      body.innerHTML = "";
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
+    body.innerHTML = cloudUsers.map(function (u) {
+      return "<tr>" +
+        "<td><b>" + esc(u.id) + "</b></td>" +
+        "<td><b>" + esc(u.username) + "</b></td>" +
+        "<td>" + esc(u.digital_id || "—") + "</td>" +
+        "<td>" + rolePill(u.role) + "</td>" +
+        "<td>" + esc(u.created_at || "—") + "</td>" +
+        "<td>" + (Number(u.in_voice) ? "<span class='pill pill-ok'>在线</span>" : "<span class='pill pill-mute'>离线</span>") + "</td>" +
+        "<td style='white-space:nowrap'>" +
+        "<button class='btn btn-ghost btn-sm' data-ua='edit' data-id='" + esc(u.id) + "'>编辑</button> " +
+        "<button class='btn btn-ghost btn-sm' data-ua='reset' data-id='" + esc(u.id) + "'>重置密码</button> " +
+        (u.role === "admin"
+          ? "<button class='btn btn-ghost btn-sm' data-ua='role' data-id='" + esc(u.id) + "' data-role='user'>取消管理员</button>"
+          : "<button class='btn btn-ghost btn-sm' data-ua='role' data-id='" + esc(u.id) + "' data-role='admin'>设为管理员</button>") +
+        "</td></tr>";
+    }).join("");
+  }
+
+  function renderChatroomRooms() {
+    var body = $("#chatroomRoomBody");
+    var empty = $("#chatroomRoomEmpty");
+    if (!body) return;
+    if (!roomsLoaded) {
+      empty.style.display = "none";
+      body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted)">后端连接失败，无法加载房间列表</td></tr>';
+      return;
+    }
+    if (!cloudRooms.length) {
+      body.innerHTML = "";
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
+    body.innerHTML = cloudRooms.map(function (r) {
+      return "<tr>" +
+        "<td><b>" + esc(r.room_no) + "</b></td>" +
+        "<td><b>" + esc(r.name) + "</b></td>" +
+        "<td>" + esc(r.owner_name || "—") + "</td>" +
+        "<td>" + Number(r.member_count || 0) + "</td>" +
+        "<td>" + passPill(r.has_pass) + "</td>" +
+        "<td>" + Number(r.voice_count || 0) + "</td>" +
+        "<td>" + esc(r.created_at || "—") + "</td>" +
+        "<td style='white-space:nowrap'>" +
+        "<button class='btn btn-ghost btn-sm' data-ra='rename' data-no='" + esc(r.room_no) + "'>改名</button> " +
+        "<button class='btn btn-ghost btn-sm' data-ra='pass' data-no='" + esc(r.room_no) + "'>改密</button> " +
+        "<button class='btn btn-ghost btn-sm' data-ra='dissolve' data-no='" + esc(r.room_no) + "'>解散</button>" +
+        "</td></tr>";
+    }).join("");
+  }
+
+  function promptTrim(msg, fallback) {
+    var v = window.prompt(msg, fallback == null ? "" : fallback);
+    if (v === null) return null; /* 用户取消 */
+    return String(v).trim();
+  }
+
+  function doUserEdit(u) {
+    var name = promptTrim("请输入新用户名（留空保持不变）", u.username);
+    if (name === null) return;
+    var did = promptTrim("请输入新数字 ID（6-9 位，留空保持不变）", u.digital_id || "");
+    if (did === null) return;
+    var patch = {};
+    if (name) patch.username = name;
+    if (did) patch.digital_id = did;
+    if (!Object.keys(patch).length) { toast("未做任何修改", ""); return; }
+    API.adminUpdateUser(u.id, patch).then(function () {
+      toast("用户 " + u.username + " 信息已更新", "ok");
+      return loadChatroom();
+    }).catch(function (err) {
+      toast("更新失败：" + (err.message || "后端连接失败"), "err");
+    });
+  }
+
+  function doUserReset(u) {
+    var pwd = window.prompt("请输入 " + u.username + " 的新密码（至少 6 位）", "");
+    if (pwd === null) return;
+    pwd = String(pwd);
+    if (pwd.length < 6) { toast("密码至少 6 位", "err"); return; }
+    API.adminUpdateUser(u.id, { password: pwd }).then(function () {
+      toast("用户 " + u.username + " 密码已重置", "ok");
+    }).catch(function (err) {
+      toast("重置失败：" + (err.message || "后端连接失败"), "err");
+    });
+  }
+
+  function doUserRole(u, role) {
+    var zh = role === "admin" ? "设为管理员" : "取消管理员";
+    if (!window.confirm("确定将「" + u.username + "」" + zh + "吗？")) return;
+    API.adminSetRole(u.id, role).then(function () {
+      toast("已" + zh + "「" + u.username + "」", "ok");
+      return loadChatroom();
+    }).catch(function (err) {
+      toast("操作失败：" + (err.message || "后端连接失败"), "err");
+    });
+  }
+
+  function doRoomRename(r) {
+    var name = promptTrim("请输入房间 " + r.room_no + " 的新名称", r.name);
+    if (name === null) return;
+    if (!name) { toast("房间名不能为空", "err"); return; }
+    API.adminUpdateRoom(r.room_no, { name: name }).then(function () {
+      toast("房间 " + r.room_no + " 已改名为「" + name + "」", "ok");
+      return loadChatroom();
+    }).catch(function (err) {
+      toast("改名失败：" + (err.message || "后端连接失败"), "err");
+    });
+  }
+
+  function doRoomPass(r) {
+    var pwd = window.prompt("请输入房间 " + r.room_no + " 的新密码（4-20 位；留空表示取消密码）", "");
+    if (pwd === null) return;
+    pwd = String(pwd).trim();
+    if (pwd && (pwd.length < 4 || pwd.length > 20)) { toast("房间密码需 4-20 位", "err"); return; }
+    API.adminUpdateRoom(r.room_no, { password: pwd }).then(function () {
+      toast(pwd ? "房间 " + r.room_no + " 已设置密码" : "房间 " + r.room_no + " 密码已取消", "ok");
+      return loadChatroom();
+    }).catch(function (err) {
+      toast("设置失败：" + (err.message || "后端连接失败"), "err");
+    });
+  }
+
+  function doRoomDissolve(r) {
+    if (!window.confirm("确定解散房间 " + r.room_no + "（" + r.name + "）吗？解散后成员、消息、语音会话将全部清除，且不可恢复。")) return;
+    API.adminDissolveRoom(r.room_no).then(function () {
+      toast("房间 " + r.room_no + " 已解散", "ok");
+      return loadChatroom();
+    }).catch(function (err) {
+      toast("解散失败：" + (err.message || "后端连接失败"), "err");
+    });
+  }
+
+  function doRoomCreate() {
+    var name = promptTrim("请输入新房间名称", "");
+    if (name === null) return;
+    if (!name) { toast("房间名不能为空", "err"); return; }
+    var pwd = promptTrim("请输入房间密码（4-20 位，可留空表示无密码）", "");
+    if (pwd === null) return;
+    if (pwd && (pwd.length < 4 || pwd.length > 20)) { toast("房间密码需 4-20 位", "err"); return; }
+    var ownerId = promptTrim("请输入房主用户 ID（可留空默认当前管理员）", "");
+    if (ownerId === null) return;
+    API.adminCreateRoom(name, pwd, ownerId || undefined).then(function (res) {
+      toast("房间「" + name + "」已创建（号 " + (res.room ? res.room.room_no : "") + "）", "ok");
+      return loadChatroom();
+    }).catch(function (err) {
+      toast("创建失败：" + (err.message || "后端连接失败"), "err");
+    });
+  }
+
   /* ---------------- 导出 ---------------- */
   function download(filename, text) {
     var blob = new Blob([text], { type: "application/json;charset=utf-8" });
@@ -667,9 +870,44 @@
     $("#refreshBtn").addEventListener("click", function () {
       loadCloudOrders().then(renderAll);
       loadMessages();
+      loadChatroom();
       toast("云端数据已刷新", "ok");
     });
     $("#logoutBtn").addEventListener("click", logout);
+
+    // 聊天室管理
+    var uBody = $("#chatroomUserBody");
+    if (uBody) {
+      uBody.addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-ua]");
+        if (!btn) return;
+        var id = Number(btn.getAttribute("data-id"));
+        var u = null;
+        cloudUsers.forEach(function (x) { if (Number(x.id) === id) u = x; });
+        if (!u) return;
+        var act = btn.getAttribute("data-ua");
+        if (act === "edit") doUserEdit(u);
+        else if (act === "reset") doUserReset(u);
+        else if (act === "role") doUserRole(u, btn.getAttribute("data-role"));
+      });
+    }
+    var rBody = $("#chatroomRoomBody");
+    if (rBody) {
+      rBody.addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-ra]");
+        if (!btn) return;
+        var no = Number(btn.getAttribute("data-no"));
+        var r = null;
+        cloudRooms.forEach(function (x) { if (Number(x.room_no) === no) r = x; });
+        if (!r) return;
+        var act = btn.getAttribute("data-ra");
+        if (act === "rename") doRoomRename(r);
+        else if (act === "pass") doRoomPass(r);
+        else if (act === "dissolve") doRoomDissolve(r);
+      });
+    }
+    var addRoom = $("#chatroomAddRoom");
+    if (addRoom) addRoom.addEventListener("click", doRoomCreate);
   }
 
   /* ---------------- 入口 ---------------- */

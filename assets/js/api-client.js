@@ -174,6 +174,29 @@
     deleteImage: function (key) {
       return request("DELETE", "/api/img/" + encodeURIComponent(key));
     },
-    imageUrl: function (key) { return BASE + "/api/img/" + encodeURIComponent(key); }
+    imageUrl: function (key) { return BASE + "/api/img/" + encodeURIComponent(key); },
+
+    /* 聊天室管理（admin，仅 role=admin 可调用） */
+    adminListUsers: function () { return request("GET", "/api/admin/users"); },
+    adminUpdateUser: function (id, patch) {
+      return request("POST", "/api/admin/users/" + Number(id), patch || {});
+    },
+    adminSetRole: function (id, role) {
+      return request("POST", "/api/admin/users/" + Number(id) + "/role", { role: role });
+    },
+    adminListRooms: function () { return request("GET", "/api/admin/rooms"); },
+    adminCreateRoom: function (name, password, ownerUserId) {
+      return request("POST", "/api/admin/rooms", {
+        name: name,
+        password: password || "",
+        owner_user_id: ownerUserId ? Number(ownerUserId) : undefined
+      });
+    },
+    adminUpdateRoom: function (roomNo, patch) {
+      return request("PUT", "/api/admin/rooms/" + Number(roomNo), patch || {});
+    },
+    adminDissolveRoom: function (roomNo) {
+      return request("DELETE", "/api/admin/rooms/" + Number(roomNo));
+    }
   };
 })();

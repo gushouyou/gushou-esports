@@ -67,6 +67,7 @@
       <a data-page="orders">📋 订单管理</a>
       <a data-page="services">🎮 服务管理</a>
       <a data-page="messages">✉️ 客户留言</a>
+      <a data-page="chatroom">💬 聊天室管理</a>
       <a data-page="settings">⚙️ 站点设置</a>
     </aside>
 
@@ -389,6 +390,61 @@
         </div>
       </section>
 
+      <!-- ---------- 聊天室管理 ---------- -->
+      <section class="admin-page" data-page="chatroom">
+        <div class="admin-page-head">
+          <div>
+            <h2>聊天室管理</h2>
+            <p>注册人员信息修改与聊天室房间管理（GET/POST /api/admin/users、/api/admin/rooms，仅 role=admin 可调用）。</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>用户管理</h3>
+            <span class="panel-sub">全部注册用户 · 可改用户名 / 数字 ID / 密码 / 管理员</span>
+          </div>
+          <div class="table-wrap" style="border:none;background:transparent">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>用户名</th><th>数字 ID</th><th>角色</th>
+                  <th>注册时间</th><th>语音</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="chatroomUserBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="chatroomUserEmpty" style="display:none">
+            <div class="empty-icon">👤</div>
+            <div>暂无注册用户</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>房间管理</h3>
+            <span class="panel-sub">全部房间 · 可新建 / 改名 / 改密 / 解散</span>
+            <button class="btn btn-primary btn-sm" type="button" id="chatroomAddRoom" style="margin-left:auto">＋ 新建房间</button>
+          </div>
+          <div class="table-wrap" style="border:none;background:transparent">
+            <table>
+              <thead>
+                <tr>
+                  <th>房间号</th><th>名称</th><th>房主</th><th>成员</th>
+                  <th>密码</th><th>语音在线</th><th>创建时间</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="chatroomRoomBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="chatroomRoomEmpty" style="display:none">
+            <div class="empty-icon">🏠</div>
+            <div>暂无房间</div>
+          </div>
+        </div>
+      </section>
+
       <!-- ---------- 站点设置 ---------- -->
       <section class="admin-page" data-page="settings">
         <div class="admin-page-head">
@@ -483,9 +539,9 @@
 
 <div class="toast-wrap"></div>
 <script src="assets/js/site-data.js"></script>
-<script src="assets/js/api-client.js"></script>
+<script src="assets/js/api-client.js?v=20261028e"></script>
 <script src="assets/js/admin-auth-config.js"></script>
-<script src="assets/js/admin.js"></script>
+<script src="assets/js/admin.js?v=20261028e"></script>
 <script src="assets/js/admin-content.js"></script>
 <script src="assets/js/admin-publish.js"></script>
 </body>
