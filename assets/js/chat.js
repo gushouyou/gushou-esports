@@ -796,9 +796,10 @@
         var list = (data && Array.isArray(data.list)) ? data.list : [];
         if (!list.length) { el.innerHTML = '<span class="gb-empty">暂无靓号资源</span>'; return; }
         el.innerHTML = list.map(function (x) {
+          var v = (x != null && typeof x === "object") ? (x.digital_id || x.value || x.no || "") : x;
           return '<div class="gb-lucky-item">' +
-            '<span class="gb-lucky-no">#' + esc(String(x.digital_id)) + "</span>" +
-            '<span class="gb-lucky-tag">' + esc(x.tag || x.level || "靓号") + "</span>" +
+            '<span class="gb-lucky-no">#' + esc(String(v)) + "</span>" +
+            '<span class="gb-lucky-tag">' + esc((x && x.tag) || (x && x.level) || "靓号") + "</span>" +
             "</div>";
         }).join("");
       })
