@@ -406,6 +406,11 @@
   font-size: 13px;
   letter-spacing: .5px;
 }
+/* 大厅固定入口（房间号 0） */
+.gb-lobby-item { border-color: rgba(255, 159, 67, .35); }
+.gb-lobby-item .gb-room-no { background: linear-gradient(135deg, #ff9f43 0%, #ff6b81 100%); }
+.gb-lobby-item .gb-room-name { color: #ffd9a8; }
+.gb-lobby-item.active { border-color: rgba(255, 159, 67, .85); background: rgba(255, 159, 67, .14); box-shadow: 0 0 0 3px rgba(255, 159, 67, .12); }
 .gb-room-info { min-width: 0; }
 .gb-room-name {
   font-size: 14px;

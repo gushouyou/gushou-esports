@@ -2,8 +2,8 @@
    顾手游电竞 - KOOK 风格房间制语音房逻辑
    ---------------------------------------------------------
    依赖：api-client.js（window.GB_API）、user-auth.js（GBUser）
-   - 左栏：房间列表 15 秒轮询刷新
-   - 右栏：当前房间消息 5 秒增量轮询（?after=）
+   - 左栏：固定"大厅"入口（房间号 0，走 /api/chat）+ 房间列表 15 秒轮询
+   - 右栏：当前频道（大厅/房间）消息 5 秒增量轮询（?after=）
    - 弹窗：创建房间 / 密码房加入 / 房主管理（改名·改密·踢人·解散）
    ========================================================= */
 (function () {
@@ -41,8 +41,8 @@
 
   /* ---------------- 状态 ---------------- */
   var rooms = [];          /* 房间列表缓存 */
-  var current = null;      /* 当前房间 { room_no, name, has_pass, owner_name, member_count } */
-  var isOwner = false;     /* 当前用户是否为当前房间房主 */
+  var current = null;      /* 当前频道：大厅 { room_no:0, name:"大厅", lobby:true } 或房间 { room_no, name, has_pass, owner_name, member_count } */
+  var isOwner = false;     /* 当前用户是否为当前房间房主（大厅无房主概念） */
   var lastId = 0;          /* 当前房间最后一条消息 id */
   var roomTimer = null;    /* 房间列表轮询 */
   var chatTimer = null;    /* 消息轮询 */
@@ -92,25 +92,35 @@
     box.insertAdjacentHTML("beforeend", html);
   }
 
-  /* ---------------- 房间列表 ---------------- */
+  /* ---------------- 房间列表（顶部固定大厅入口） ---------------- */
   function renderRooms() {
     var listEl = $("#gbRoomList");
     if (!listEl) return;
-    if (!rooms.length) {
-      listEl.innerHTML = '<div class="gb-empty">暂无房间，点击上方"创建房间"开启第一间～</div>';
-      return;
-    }
-    var html = rooms.map(function (r) {
-      var isCur = current && current.room_no === r.room_no;
-      return '<div class="gb-room-item' + (isCur ? " active" : "") + '" data-no="' + r.room_no + '" role="button" tabindex="0">' +
-        '<span class="gb-room-no">' + r.room_no + "</span>" +
+    var isLobby = current && current.room_no === 0;
+    var lobbyHtml = '<div class="gb-room-item gb-lobby-item' + (isLobby ? " active" : "") + '" data-no="0" role="button" tabindex="0">' +
+        '<span class="gb-room-no">0</span>' +
         '<div class="gb-room-info">' +
-          '<div class="gb-room-name">' + esc(r.name) + (r.has_pass ? '<span class="gb-room-lock" title="密码房">密</span>' : "") + "</div>" +
-          '<div class="gb-room-meta">成员 ' + r.member_count + " · 房主 " + esc(r.owner_name || "?") + "</div>" +
+          '<div class="gb-room-name">大厅</div>' +
+          '<div class="gb-room-meta">公共聊天 · 所有用户可见</div>' +
         "</div></div>";
-    }).join("");
+    var html = lobbyHtml;
+    if (!rooms.length) {
+      html += '<div class="gb-empty">暂无房间，点击上方"创建房间"开启第一间～</div>';
+    } else {
+      html += rooms.map(function (r) {
+        var isCur = current && current.room_no === r.room_no;
+        return '<div class="gb-room-item' + (isCur ? " active" : "") + '" data-no="' + r.room_no + '" role="button" tabindex="0">' +
+          '<span class="gb-room-no">' + r.room_no + "</span>" +
+          '<div class="gb-room-info">' +
+            '<div class="gb-room-name">' + esc(r.name) + (r.has_pass ? '<span class="gb-room-lock" title="密码房">密</span>' : "") + "</div>" +
+            '<div class="gb-room-meta">成员 ' + r.member_count + " · 房主 " + esc(r.owner_name || "?") + "</div>" +
+          "</div></div>";
+      }).join("");
+    }
     listEl.innerHTML = html;
-    Array.prototype.forEach.call(listEl.querySelectorAll(".gb-room-item"), function (el) {
+    var lobbyEl = listEl.querySelector('[data-no="0"]');
+    if (lobbyEl) lobbyEl.addEventListener("click", enterLobby);
+    Array.prototype.forEach.call(listEl.querySelectorAll('.gb-room-item[data-no]:not([data-no="0"])'), function (el) {
       el.addEventListener("click", function () {
         var no = Number(el.getAttribute("data-no"));
         for (var i = 0; i < rooms.length; i++) {
@@ -158,6 +168,8 @@
     setChatStatus((room.has_pass ? "密码房 · " : "公开房 · ") + "房主 " + (room.owner_name || "?"));
     var mgr = $("#gbRoomManageBtn");
     if (mgr) mgr.style.display = isOwner ? "inline-block" : "none";
+    var leave = $("#gbRoomLeaveBtn");
+    if (leave) leave.style.display = "inline-block";
     box.innerHTML = '<div class="gb-empty">正在加载聊天记录…</div>';
     renderRooms();
     loadRoomMessages();
@@ -173,8 +185,68 @@
     setChatStatus("从左侧选择房间，或创建 / 按房间号加入");
     var mgr = $("#gbRoomManageBtn");
     if (mgr) mgr.style.display = "none";
+    var leave = $("#gbRoomLeaveBtn");
+    if (leave) leave.style.display = "inline-block";
     box.innerHTML = '<div class="gb-empty">从左侧选择一个房间加入，或创建 / 按房间号加入。</div>';
     renderRooms();
+  }
+
+  /* ---------------- 大厅（房间号 0，走 /api/chat） ---------------- */
+  function enterLobby() {
+    if (current && current.room_no === 0) return;
+    requireLogin(function () {
+      hideErr();
+      stopChatTimer();
+      current = { room_no: 0, name: "大厅", lobby: true, has_pass: false, owner_name: "" };
+      lastId = 0;
+      isOwner = false;
+      var title = $("#gbRoomTitle");
+      if (title) title.textContent = "大厅  #0";
+      setChatStatus("公共聊天 · 所有用户可见");
+      var mgr = $("#gbRoomManageBtn");
+      if (mgr) mgr.style.display = "none";
+      var leave = $("#gbRoomLeaveBtn");
+      if (leave) leave.style.display = "none";
+      box.innerHTML = '<div class="gb-empty">正在加载大厅消息…</div>';
+      renderRooms();
+      loadLobbyMessages();
+    });
+  }
+
+  function loadLobbyMessages() {
+    if (!current || current.room_no !== 0) return;
+    hideErr();
+    setChatStatus("连接中…");
+    window.GB_API.listChat()
+      .then(function (data) {
+        var list = (data && Array.isArray(data.list)) ? data.list : [];
+        lastId = (data && data.last != null) ? data.last : 0;
+        box.innerHTML = list.length ? "" : '<div class="gb-empty">大厅还很安静，来聊第一句吧～</div>';
+        renderMsgs(list);
+        box.scrollTop = box.scrollHeight;
+        setChatStatus("公共聊天 · 在线");
+        startChatTimer();
+      })
+      .catch(function (err) {
+        setChatStatus("加载失败");
+        box.innerHTML = '<div class="gb-empty">消息加载失败：' + esc(err && err.message ? err.message : "网络异常") + "</div>";
+      });
+  }
+
+  function pollLobby() {
+    if (!current || current.room_no !== 0) return;
+    window.GB_API.listChat(lastId)
+      .then(function (data) {
+        var list = (data && Array.isArray(data.list)) ? data.list : [];
+        if (!list.length) return;
+        if (data.last != null) lastId = data.last;
+        var wasBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+        var hadEmpty = box.querySelector(".gb-empty");
+        if (hadEmpty) hadEmpty.remove();
+        renderMsgs(list);
+        if (wasBottom) box.scrollTop = box.scrollHeight;
+      })
+      .catch(function () { /* 大厅轮询失败静默，下轮重试 */ });
   }
 
   /* ---------------- 房间消息 ---------------- */
@@ -232,17 +304,19 @@
 
   /* ---------------- 发送 ---------------- */
   function send() {
-    if (!current) { showErr("请先加入一个房间再发言"); return; }
+    if (!current) { showErr("请先加入一个房间或进入大厅再发言"); return; }
     var input = $("#gbChatText");
     var content = (input ? input.value : "").trim();
     hideErr();
     if (!content) return;
     if (content.length > 300) { showErr("消息不能超过 300 字。"); return; }
     if (!window.GB_API.isLoggedIn()) { requireLogin(function () { send(); }); return; }
-    window.GB_API.roomSend(current.room_no, content)
-      .then(function () {
+    var p = (current.room_no === 0)
+      ? window.GB_API.postChat(content)
+      : window.GB_API.roomSend(current.room_no, content);
+    p.then(function () {
         if (input) input.value = "";
-        setTimeout(pollRoom, 300);
+        setTimeout(function () { if (current && current.room_no === 0) pollLobby(); else pollRoom(); }, 300);
       })
       .catch(function (err) {
         if (err && err.status === 401) { requireLogin(function () { send(); }); return; }
@@ -421,7 +495,7 @@
   }
 
   function doLeave() {
-    if (!current) return;
+    if (!current || current.room_no === 0) return; /* 大厅无退出概念，按钮已隐藏 */
     if (isOwner) { showErr("你是房主，请通过「管理房间」解散或调整房间"); return; }
     window.GB_API.roomLeave(current.room_no)
       .then(function () {
