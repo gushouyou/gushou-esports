@@ -85,7 +85,7 @@
         A.setUser(data.user);
         closeModal();
         renderUserArea();
-        toast("登录成功，欢迎回来，@" + data.user.username, "ok");
+        toast("登录成功，欢迎回来，@" + data.user.username + (data.user.digital_id != null ? "（数字 ID #" + data.user.digital_id + "）" : ""), "ok");
         var cb = pendingCallback;
         pendingCallback = null;
         if (typeof cb === "function") cb();
@@ -132,7 +132,7 @@
         A.setUser(data.user);
         closeModal();
         renderUserArea();
-        toast("注册成功，欢迎加入，@" + data.user.username, "ok");
+        toast("注册成功，欢迎加入，@" + data.user.username + (data.user.digital_id != null ? "（数字 ID #" + data.user.digital_id + "）" : ""), "ok");
         var cb = pendingCallback;
         pendingCallback = null;
         if (typeof cb === "function") cb();
@@ -186,6 +186,7 @@
     var user = A.getUser() || {};
     var roleName = user.role === "admin" ? "管理员" : "普通用户";
     var idText = (user.id != null && user.id !== "") ? esc(String(user.id)) : "—";
+    var didText = (user.digital_id != null && user.digital_id !== "") ? esc(String(user.digital_id)) : "—";
     var nameText = user.username ? esc(user.username) : "—";
     var avatarChar = nameText === "—" ? "顾" : esc(String(user.username).charAt(0).toUpperCase());
     openModal("个人中心",
@@ -195,12 +196,13 @@
       '<div><b class="gb-profile-name">' + nameText + "</b>" +
       '<span class="gb-profile-role">' + esc(roleName) + "</span></div>" +
       "</div>" +
+      '<div class="gb-profile-item"><span class="gp-label">数字 ID</span><span class="gp-val gp-did' + (user.role === "admin" ? " gp-did-admin" : "") + '">#' + didText + "</span></div>" +
       '<div class="gb-profile-item"><span class="gp-label">用户 ID</span><span class="gp-val">' + idText + "</span></div>" +
       '<div class="gb-profile-item"><span class="gp-label">账号</span><span class="gp-val">' + nameText + "</span></div>" +
       '<div class="gb-profile-item"><span class="gp-label">角色</span><span class="gp-val">' + esc(roleName) + "</span></div>" +
       '<div class="gb-profile-item"><span class="gp-label">绑定手机</span><span class="gp-val gp-empty">未绑定</span></div>' +
       '<div class="gb-profile-item"><span class="gp-label">绑定微信</span><span class="gp-val gp-empty">未绑定</span></div>' +
-      '<p class="gb-bind-hint">注：当前账号体系仅含用户 ID / 账号 / 角色字段，未开放手机、微信等绑定信息，以上两项如实展示为“未绑定”。</p>' +
+      '<p class="gb-bind-hint">注：当前账号体系仅含数字 ID / 用户 ID / 账号 / 角色字段，未开放手机、微信等绑定信息，以上两项如实展示为“未绑定”。</p>' +
       "</div>",
       '<button class="btn btn-ghost btn-sm" type="button" id="gbPfOrders">我的订单</button>' +
       '<button class="btn btn-primary btn-sm" type="button" id="gbPfLogout">退出登录</button>');
@@ -230,9 +232,10 @@
     }
     var user = A.getUser() || {};
     var name = user.username || "用户";
+    var did = (user.digital_id != null && user.digital_id !== "") ? "#" + esc(String(user.digital_id)) : "";
     area.innerHTML =
       '<span class="gb-user-ico">👤</span>' +
-      '<button class="gb-user-chip" type="button" data-ua="profile" title="打开个人中心">' + esc(name) + "</button>" +
+      '<button class="gb-user-chip" type="button" data-ua="profile" title="打开个人中心">' + esc(name) + (did ? '<span class="gb-user-did"> ' + did + "</span>" : "") + "</button>" +
       '<button class="btn btn-ghost btn-sm" type="button" data-ua="orders">我的订单</button>' +
       '<button class="btn btn-ghost btn-sm" type="button" data-ua="logout">退出</button>';
   }

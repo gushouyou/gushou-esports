@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>语音房聊天 | 顾手游电竞</title>
-<meta name="description" content="顾手游电竞 KOOK 风格语音房聊天室：自建房间、房间号加入、密码房、房主管理（改名/改密/踢人/解散），登录后实时畅聊。">
+<meta name="description" content="顾手游电竞 KOOK 风格语音房聊天室：9 位数字 ID、靓号体系、语音开麦闭麦（WebRTC）、自建房间、密码房、房主管理，登录后实时畅聊。">
 <link rel="stylesheet" href="assets/css/style.css?v=20261032">
-<link rel="stylesheet" href="assets/css/dynamic.css?v=20261028b">
+<link rel="stylesheet" href="assets/css/dynamic.css?v=20261028c">
 </head>
 <body>
 
@@ -43,7 +43,7 @@
     <div class="container">
       <span class="eyebrow">KOOK ROOM</span>
       <h1>语音房</h1>
-      <p>自建房间、房间号加入、密码房、房主管理（改名 / 改密 / 踢人 / 解散），登录后实时畅聊。</p>
+      <p>注册即得 9 位数字 ID（管理员 666）、语音开麦闭麦实时畅聊，自建房间、密码房、房主管理。</p>
     </div>
   </section>
 
@@ -82,9 +82,18 @@
               <span class="panel-sub" id="gbRoomMeta">从左侧选择房间，或创建 / 按房间号加入</span>
             </div>
             <div class="gb-room-actions">
+              <span class="gb-voice-bar" id="gbVoiceBar" style="display:none">
+                <button class="gb-voice-btn" type="button" id="gbVoiceJoinBtn" title="进入语音频道">🎧 进入语音</button>
+                <button class="gb-voice-btn gb-voice-mic-on" type="button" id="gbVoiceMicBtn" style="display:none" title="当前已开麦">🎤 开麦</button>
+                <button class="gb-voice-btn gb-voice-leave" type="button" id="gbVoiceLeaveBtn" style="display:none" title="退出语音频道">🚪 退出语音</button>
+              </span>
               <button class="btn btn-ghost btn-sm" type="button" id="gbRoomManageBtn" style="display:none">管理房间</button>
               <button class="btn btn-ghost btn-sm" type="button" id="gbRoomLeaveBtn">退出房间</button>
             </div>
+          </div>
+
+          <div class="gb-voice-panel" id="gbVoicePanel" style="display:none">
+            <div class="gb-voice-members" id="gbVoiceMembers"><span class="gb-empty">语音频道空无一人，来占个麦位～</span></div>
           </div>
 
           <div class="gb-chat-box" id="gbChatBox">
@@ -193,6 +202,32 @@
   </div>
 </div>
 
+<!-- ================= 弹窗：靓号中心（占位） ================= -->
+<div class="gb-modal-mask" id="gbLuckyModal" style="display:none">
+  <div class="gb-modal gb-modal-sm">
+    <div class="gb-modal-head">
+      <h3>靓号中心</h3>
+      <button class="gb-modal-close" type="button" data-close="gbLuckyModal">×</button>
+    </div>
+    <div class="gb-modal-body">
+      <div class="gb-alert err" id="gbLuckyErr" style="display:none"></div>
+      <div class="gb-alert ok" id="gbLuckyOk" style="display:none"></div>
+      <div class="gb-form-row">
+        <label>我的数字 ID</label>
+        <div class="gb-lucky-cur" id="gbLuckyCur">—</div>
+      </div>
+      <div class="gb-form-row">
+        <label>本期可购靓号（预览占位）</label>
+        <div class="gb-lucky-list" id="gbLuckyList">正在加载靓号…</div>
+      </div>
+      <p class="gb-lucky-note">靓号购买与幸运抽奖活动即将开启，本期为预览占位：任意 9 位数字 ID 均可保留当前号，管理员固定为 #666。</p>
+    </div>
+    <div class="gb-modal-foot">
+      <button class="btn btn-ghost" type="button" data-close="gbLuckyModal">关闭</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================= 页脚 ================= -->
 <footer class="site-footer">
   <div class="container footer-grid">
@@ -231,8 +266,8 @@
 
 <script src="assets/js/site-data.js"></script>
 <script src="assets/js/main.js"></script>
-<script src="assets/js/api-client.js?v=20261028a"></script>
-<script src="assets/js/user-auth.js?v=20261031"></script>
-<script src="assets/js/chat.js?v=20261028b"></script>
+<script src="assets/js/api-client.js?v=20261028c"></script>
+<script src="assets/js/user-auth.js?v=20261028c"></script>
+<script src="assets/js/chat.js?v=20261028c"></script>
 </body>
 </html>

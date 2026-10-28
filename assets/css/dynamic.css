@@ -516,6 +516,11 @@
   .gb-chat-input { padding: 10px; }
   .gb-chat-input textarea { height: 44px; }
   .gb-chat-msg { max-width: 88%; }
+  .gb-room-actions { flex-wrap: wrap; }
+  .gb-side-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .gb-voice-bar { flex-wrap: wrap; }
+  .gb-voice-panel { padding: 8px 10px; }
+  .gb-voice-member { flex: 1 1 auto; }
 }
 
 @media (max-width: 380px) {
@@ -556,3 +561,144 @@ textarea#gbMsgText:focus {
   border-color: #4f8cff;
   box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.18);
 }
+
+/* ---------------- V2：语音模式（KOOK 风格） ---------------- */
+.gb-side-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.gb-voice-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px;
+  background: rgba(79, 140, 255, 0.06);
+  border: 1px solid rgba(79, 140, 255, 0.25);
+  border-radius: 999px;
+}
+.gb-voice-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12.6px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text, #e9eefb);
+  background: rgba(255, 255, 255, 0.06);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.gb-voice-btn:hover { background: rgba(79, 140, 255, 0.2); color: #fff; }
+.gb-voice-mic-on { background: rgba(60, 200, 140, 0.18); color: #63d9a5; }
+.gb-voice-mic-on:hover { background: rgba(60, 200, 140, 0.3); color: #7cecb8; }
+.gb-voice-mic-off { background: rgba(255, 107, 107, 0.18); color: #ff8a8a; }
+.gb-voice-mic-off:hover { background: rgba(255, 107, 107, 0.3); color: #ffb3b3; }
+.gb-voice-leave { background: transparent; color: var(--muted, #8b96b0); }
+.gb-voice-leave:hover { background: rgba(255, 107, 107, 0.16); color: #ff8a8a; }
+
+.gb-voice-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line-strong, #2a3450);
+  background: rgba(20, 26, 48, 0.5);
+}
+.gb-voice-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 110px;
+  overflow-y: auto;
+}
+.gb-voice-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong, #2a3450);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  min-width: 0;
+}
+.gb-voice-member.me { border-color: rgba(79, 140, 255, 0.55); background: rgba(79, 140, 255, 0.12); }
+.gb-voice-avatar {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--grad, linear-gradient(135deg, #4f8cff 0%, #8b5cf6 100%));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.gb-voice-info { display: flex; flex-direction: column; min-width: 0; }
+.gb-voice-name {
+  font-size: 12.6px;
+  font-weight: 700;
+  color: var(--text, #e9eefb);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.gb-voice-self {
+  font-size: 10px;
+  color: #9dc2ff;
+  border: 1px solid rgba(79, 140, 255, 0.4);
+  border-radius: 6px;
+  padding: 0 4px;
+  line-height: 1.3;
+  flex: none;
+}
+.gb-voice-crown { font-size: 11px; flex: none; }
+.gb-voice-did { font-size: 10.6px; color: var(--muted, #8b96b0); }
+.gb-voice-mic { flex: none; font-size: 12.6px; }
+.gb-voice-mic.on { color: #63d9a5; }
+.gb-voice-mic.off { color: #ff8a8a; }
+
+/* ---------------- V2：靓号中心 ---------------- */
+.gb-lucky-cur {
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong, #2a3450);
+  border-radius: 10px;
+  background: rgba(255, 207, 107, 0.08);
+  font-size: 20px;
+  font-weight: 900;
+  color: #ffcf6b;
+  letter-spacing: 1px;
+}
+.gb-lucky-list { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; }
+.gb-lucky-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong, #2a3450);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.gb-lucky-no { font-size: 15px; font-weight: 900; color: #ffcf6b; letter-spacing: 1px; }
+.gb-lucky-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9dc2ff;
+  background: rgba(79, 140, 255, 0.14);
+  border: 1px solid rgba(79, 140, 255, 0.3);
+  border-radius: 999px;
+  padding: 2px 9px;
+  flex: none;
+}
+.gb-lucky-note { font-size: 12.3px; color: var(--muted, #8b96b0); line-height: 1.7; margin: 14px 0 0; }
+
+/* ---------------- V2：用户区数字 ID ---------------- */
+.gb-user-did { color: #9dc2ff; font-size: 12px; font-weight: 700; }
+.gb-profile-item .gp-val.gp-did { font-size: 17px; font-weight: 900; color: #ffcf6b; letter-spacing: 1px; }
+.gb-profile-item .gp-val.gp-did-admin { color: #ff8a8a; }

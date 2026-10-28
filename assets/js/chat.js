@@ -159,6 +159,7 @@
 
   function enterRoomAfterJoin(room) {
     stopChatTimer();
+    if (voice.joined) leaveVoice();
     current = room;
     lastId = 0;
     var me = getUser();
@@ -170,12 +171,16 @@
     if (mgr) mgr.style.display = isOwner ? "inline-block" : "none";
     var leave = $("#gbRoomLeaveBtn");
     if (leave) leave.style.display = "inline-block";
+    voiceVisible(true);
+    updateVoiceUi();
     box.innerHTML = '<div class="gb-empty">正在加载聊天记录…</div>';
     renderRooms();
     loadRoomMessages();
   }
 
   function leaveRoom() {
+    if (voice.joined) leaveVoice();
+    voiceVisible(false);
     stopChatTimer();
     current = null;
     isOwner = false;
@@ -506,6 +511,277 @@
       .catch(function (err) { showErr("退出失败：" + (err && err.message ? err.message : "网络异常")); });
   }
 
+  /* =========================================================
+     语音模式（V2，WebRTC mesh + KOOK 风格）
+     - 进入语音：voiceJoin 登记 + getUserMedia 采集麦克风
+     - mesh：与每个在线成员建立 RTCPeerConnection
+     - 信令：POST/GET /signal 轮询转发 offer/answer/ice
+     - 开麦/闭麦：本地 track.enabled + API 广播 mic_on
+     - 成员列表：昵称 + #数字ID + 麦克风图标，房主 👑
+     - 联动清理：退出房间/解散/踢人时统一离开语音
+     ========================================================= */
+  var voice = {
+    joined: false,
+    stream: null,
+    peers: {},          /* userId -> RTCPeerConnection */
+    micOn: true,
+    sigTimer: null,
+    peerTimer: null,
+    sigSince: 0
+  };
+
+  function voiceVisible(v) {
+    var bar = $("#gbVoiceBar");
+    if (bar) bar.style.display = v ? "inline-flex" : "none";
+    var panel = $("#gbVoicePanel");
+    if (panel) panel.style.display = v ? "flex" : "none";
+  }
+
+  function updateVoiceUi() {
+    var joinBtn = $("#gbVoiceJoinBtn");
+    var micBtn = $("#gbVoiceMicBtn");
+    var leaveBtn = $("#gbVoiceLeaveBtn");
+    if (!joinBtn || !micBtn || !leaveBtn) return;
+    if (!voice.joined) {
+      joinBtn.style.display = "inline-block";
+      micBtn.style.display = "none";
+      leaveBtn.style.display = "none";
+    } else {
+      joinBtn.style.display = "none";
+      micBtn.style.display = "inline-block";
+      leaveBtn.style.display = "inline-block";
+      micBtn.textContent = voice.micOn ? "🎤 开麦" : "🔇 闭麦";
+      micBtn.className = "gb-voice-btn " + (voice.micOn ? "gb-voice-mic-on" : "gb-voice-mic-off");
+    }
+  }
+
+  function renderVoiceMembers(list) {
+    var el = $("#gbVoiceMembers");
+    if (!el) return;
+    if (!list || !list.length) {
+      el.innerHTML = '<span class="gb-empty">语音频道空无一人，来占个麦位～</span>';
+      return;
+    }
+    var me = getUser();
+    var ownerName = current ? current.owner_name : "";
+    var html = list.map(function (m) {
+      var isMe = me && Number(m.user_id) === Number(me.id);
+      var micCls = m.mic_on ? "on" : "off";
+      var micIcon = m.mic_on ? "🎤" : "🔇";
+      var crown = (ownerName && m.username === ownerName) ? '<span class="gb-voice-crown" title="房主">👑</span>' : "";
+      var selfTag = isMe ? '<span class="gb-voice-self">我</span>' : "";
+      return '<div class="gb-voice-member' + (isMe ? " me" : "") + '">' +
+        '<span class="gb-voice-avatar">' + esc(String(m.username || "?").charAt(0).toUpperCase()) + "</span>" +
+        '<span class="gb-voice-info">' +
+          '<span class="gb-voice-name">' + esc(m.username || "?") + selfTag + crown + "</span>" +
+          '<span class="gb-voice-did">#' + esc(m.digital_id != null ? String(m.digital_id) : "?") + "</span>" +
+        "</span>" +
+        '<span class="gb-voice-mic ' + micCls + '" title="' + (m.mic_on ? "已开麦" : "已闭麦") + '">' + micIcon + "</span>" +
+        "</div>";
+    }).join("");
+    el.innerHTML = html;
+  }
+
+  function sendSignal(toUserId, data) {
+    if (!current || current.room_no === 0) return;
+    window.GB_API.signalSend(current.room_no, toUserId, data).catch(function () { /* 信令失败静默 */ });
+  }
+
+  function ensurePc(userId) {
+    if (voice.peers[userId]) return voice.peers[userId];
+    var pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    voice.peers[userId] = pc;
+    if (voice.stream) {
+      voice.stream.getTracks().forEach(function (t) {
+        try { pc.addTrack(t, voice.stream); } catch (e) {}
+      });
+    }
+    pc.onicecandidate = function (ev) {
+      if (!ev.candidate) return;
+      sendSignal(userId, { type: "ice", candidate: ev.candidate });
+    };
+    pc.ontrack = function () { /* 远端音频自动播放，无需显式渲染 */ };
+    return pc;
+  }
+
+  function offerTo(userId) {
+    var pc = ensurePc(userId);
+    pc.createOffer()
+      .then(function (offer) { return pc.setLocalDescription(offer); })
+      .then(function () { sendSignal(userId, { type: "offer", sdp: pc.localDescription }); })
+      .catch(function () { /* glare/失败静默，成员轮询下轮补偿 */ });
+  }
+
+  function handleSignal(sig) {
+    if (!sig || sig.from_user_id == null) return;
+    var from = Number(sig.from_user_id);
+    var data = sig.data;
+    if (typeof data === "string") {
+      try { data = JSON.parse(data); } catch (e) { return; }
+    }
+    if (!data || !data.type) return;
+    if (data.type === "offer") {
+      var pc = ensurePc(from);
+      pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: data.sdp }))
+        .then(function () { return pc.createAnswer(); })
+        .then(function (answer) { return pc.setLocalDescription(answer); })
+        .then(function () { sendSignal(from, { type: "answer", sdp: pc.localDescription }); })
+        .catch(function () { /* 处理失败静默 */ });
+    } else if (data.type === "answer") {
+      var pc2 = voice.peers[from];
+      if (pc2) pc2.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: data.sdp })).catch(function () {});
+    } else if (data.type === "ice") {
+      var pc3 = voice.peers[from];
+      if (pc3 && data.candidate) pc3.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(function () {});
+    }
+  }
+
+  function pollSignals() {
+    if (!voice.joined || !current || current.room_no === 0) return;
+    window.GB_API.signalPoll(current.room_no, voice.sigSince)
+      .then(function (data) {
+        var list = (data && Array.isArray(data.list)) ? data.list : [];
+        list.forEach(function (s) {
+          if (s.at > voice.sigSince) voice.sigSince = s.at;
+          handleSignal(s);
+        });
+      })
+      .catch(function () { /* 信令轮询失败静默 */ });
+  }
+
+  function pollVoiceMembers() {
+    if (!voice.joined || !current || current.room_no === 0) return;
+    window.GB_API.voicePeers(current.room_no)
+      .then(function (data) {
+        var list = (data && Array.isArray(data.list)) ? data.list : [];
+        renderVoiceMembers(list);
+        var me = getUser();
+        var meId = me ? Number(me.id) : -1;
+        list.forEach(function (m) {
+          var uid = Number(m.user_id);
+          if (uid === meId) return;
+          if (!voice.peers[uid]) offerTo(uid);
+        });
+      })
+      .catch(function () { /* 成员轮询失败静默（解散/被踢时由消息轮询兜底） */ });
+  }
+
+  function startVoiceTimers() {
+    if (voice.sigTimer) return;
+    voice.sigTimer = setInterval(pollSignals, 2000);
+    voice.peerTimer = setInterval(pollVoiceMembers, 5000);
+  }
+  function stopVoiceTimers() {
+    if (voice.sigTimer) { clearInterval(voice.sigTimer); voice.sigTimer = null; }
+    if (voice.peerTimer) { clearInterval(voice.peerTimer); voice.peerTimer = null; }
+  }
+
+  function joinVoice() {
+    if (voice.joined) return;
+    if (!current || current.room_no === 0) { showErr("请先加入房间再进入语音"); return; }
+    if (!window.RTCPeerConnection || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showErr("当前浏览器不支持 WebRTC 语音，请使用新版 Chrome / Edge"); return;
+    }
+    requireLogin(function () {
+      window.GB_API.voiceJoin(current.room_no)
+        .then(function (data) {
+          voice.joined = true;
+          voice.micOn = true;
+          voice.sigSince = 0;
+          return navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(function (stream) {
+              voice.stream = stream;
+              var list = (data && Array.isArray(data.peers)) ? data.peers : [];
+              var me = getUser();
+              var meId = me ? Number(me.id) : -1;
+              list.forEach(function (m) {
+                var uid = Number(m.user_id);
+                if (uid === meId) return;
+                offerTo(uid);
+              });
+              startVoiceTimers();
+              updateVoiceUi();
+              pollVoiceMembers();
+            });
+        })
+        .catch(function (err) {
+          voice.joined = false;
+          /* 后端可能已登记，尝试离开清理 */
+          if (current && current.room_no !== 0) window.GB_API.voiceLeave(current.room_no).catch(function () {});
+          showErr("进入语音失败：" + (err && err.message ? err.message : "请检查麦克风权限"));
+        });
+    });
+  }
+
+  function toggleMic() {
+    if (!voice.joined) return;
+    voice.micOn = !voice.micOn;
+    if (voice.stream) {
+      voice.stream.getAudioTracks().forEach(function (t) {
+        try { t.enabled = voice.micOn; } catch (e) {}
+      });
+    }
+    if (current && current.room_no !== 0) window.GB_API.voiceMic(current.room_no, voice.micOn).catch(function () {});
+    updateVoiceUi();
+  }
+
+  function leaveVoice() {
+    if (!voice.joined) return;
+    stopVoiceTimers();
+    Object.keys(voice.peers).forEach(function (uid) {
+      try { voice.peers[uid].close(); } catch (e) {}
+    });
+    voice.peers = {};
+    if (voice.stream) {
+      voice.stream.getTracks().forEach(function (t) {
+        try { t.stop(); } catch (e) {}
+      });
+      voice.stream = null;
+    }
+    voice.joined = false;
+    voice.micOn = true;
+    voice.sigSince = 0;
+    if (current && current.room_no !== 0) window.GB_API.voiceLeave(current.room_no).catch(function () {});
+    updateVoiceUi();
+    var el = $("#gbVoiceMembers");
+    if (el) el.innerHTML = '<span class="gb-empty">语音频道空无一人，来占个麦位～</span>';
+  }
+
+  /* ---------------- 靓号中心（占位） ---------------- */
+  function openLucky() {
+    var err = $("#gbLuckyErr");
+    if (err) err.style.display = "none";
+    var ok = $("#gbLuckyOk");
+    if (ok) ok.style.display = "none";
+    var cur = $("#gbLuckyCur");
+    if (cur) {
+      var user = getUser();
+      cur.innerHTML = (user && user.digital_id != null)
+        ? "#" + esc(String(user.digital_id))
+        : '<span class="gp-empty">登录后查看</span>';
+    }
+    openModal("#gbLuckyModal");
+    loadLuckyIds();
+  }
+
+  function loadLuckyIds() {
+    var el = $("#gbLuckyList");
+    if (!el) return;
+    el.innerHTML = "正在加载靓号…";
+    window.GB_API.luckyIds()
+      .then(function (data) {
+        var list = (data && Array.isArray(data.list)) ? data.list : [];
+        if (!list.length) { el.innerHTML = '<span class="gb-empty">暂无靓号资源</span>'; return; }
+        el.innerHTML = list.map(function (x) {
+          return '<div class="gb-lucky-item">' +
+            '<span class="gb-lucky-no">#' + esc(String(x.digital_id)) + "</span>" +
+            '<span class="gb-lucky-tag">' + esc(x.tag || x.level || "靓号") + "</span>" +
+            "</div>";
+        }).join("");
+      })
+      .catch(function () { el.innerHTML = '<span class="gb-empty">靓号加载失败</span>'; });
+  }
+
   /* ---------------- 初始化 ---------------- */
   document.addEventListener("DOMContentLoaded", function () {
     box = $("#gbChatBox");
@@ -529,6 +805,18 @@
     var leaveBtn = $("#gbRoomLeaveBtn");
     if (leaveBtn) leaveBtn.addEventListener("click", doLeave);
 
+    /* 语音按钮组 */
+    var voiceJoinBtn = $("#gbVoiceJoinBtn");
+    if (voiceJoinBtn) voiceJoinBtn.addEventListener("click", joinVoice);
+    var voiceMicBtn = $("#gbVoiceMicBtn");
+    if (voiceMicBtn) voiceMicBtn.addEventListener("click", toggleMic);
+    var voiceLeaveBtn = $("#gbVoiceLeaveBtn");
+    if (voiceLeaveBtn) voiceLeaveBtn.addEventListener("click", leaveVoice);
+
+    /* 靓号中心 */
+    var luckyBtn = $("#gbLuckyBtn");
+    if (luckyBtn) luckyBtn.addEventListener("click", openLucky);
+
     var sendBtn = $("#gbChatSend");
     if (sendBtn) sendBtn.addEventListener("click", send);
     var input = $("#gbChatText");
@@ -550,5 +838,20 @@
 
     loadRooms();
     roomTimer = setInterval(loadRooms, 15000);
+  });
+
+  /* 页面关闭时兜底清理语音连接 */
+  window.addEventListener("beforeunload", function () {
+    if (voice.joined) {
+      try { stopVoiceTimers(); } catch (e) {}
+      Object.keys(voice.peers).forEach(function (uid) {
+        try { voice.peers[uid].close(); } catch (e) {}
+      });
+      if (voice.stream) {
+        voice.stream.getTracks().forEach(function (t) {
+          try { t.stop(); } catch (e) {}
+        });
+      }
+    }
   });
 })();

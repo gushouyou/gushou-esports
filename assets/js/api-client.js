@@ -122,6 +122,29 @@
       return request("GET", "/api/rooms/" + Number(roomNo) + "/members");
     },
 
+    /* 3.1 数字 ID / 语音模式（V2，KOOK 风格） */
+    luckyIds: function () {
+      return request("GET", "/api/lucky-ids");
+    },
+    voiceJoin: function (roomNo) {
+      return request("POST", "/api/rooms/" + Number(roomNo) + "/voice/join", {});
+    },
+    voiceLeave: function (roomNo) {
+      return request("POST", "/api/rooms/" + Number(roomNo) + "/voice/leave", {});
+    },
+    voiceMic: function (roomNo, micOn) {
+      return request("POST", "/api/rooms/" + Number(roomNo) + "/voice/mic", { mic_on: !!micOn });
+    },
+    voicePeers: function (roomNo) {
+      return request("GET", "/api/rooms/" + Number(roomNo) + "/voice/peers");
+    },
+    signalSend: function (roomNo, toUserId, data) {
+      return request("POST", "/api/rooms/" + Number(roomNo) + "/signal", { to_user_id: Number(toUserId), data: data });
+    },
+    signalPoll: function (roomNo, since) {
+      return request("GET", "/api/rooms/" + Number(roomNo) + "/signal" + (since ? "?since=" + Number(since) : ""));
+    },
+
     /* 内容 */
     getContent: function () { return request("GET", "/api/content"); },
     saveContent: function (key, value) {
